@@ -22,6 +22,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/xdg/scram"
 	"go.uber.org/zap"
+
+	"github.com/fission/keda-connectors/common"
 )
 
 // Following code snippet is from KEDA project and adapted for Fission.
@@ -217,7 +219,7 @@ type Connector struct {
 	ready                chan bool
 	logger               *zap.Logger
 	producer             sarama.SyncProducer
-	fissionTriggerFields FissionMetadata
+	fissionTriggerFields common.FissionMetadata
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
@@ -259,7 +261,7 @@ func getProducer(metadata kafkaMetadata) (sarama.SyncProducer, error) {
 	return producer, nil
 }
 
-func handleFissionFunction(msg *sarama.ConsumerMessage, triggerFields FissionMetadata, producer sarama.SyncProducer, logger *zap.Logger) bool {
+func handleFissionFunction(msg *sarama.ConsumerMessage, triggerFields common.FissionMetadata, producer sarama.SyncProducer, logger *zap.Logger) bool {
 	var value string = string(msg.Value[:])
 	// Generate the Headers
 	fissionHeaders := map[string]string{
@@ -362,7 +364,7 @@ func handleFissionFunction(msg *sarama.ConsumerMessage, triggerFields FissionMet
 	return true
 }
 
-func errorHandler(logger *zap.Logger, triggerFields FissionMetadata, producer sarama.SyncProducer, err error) {
+func errorHandler(logger *zap.Logger, triggerFields common.FissionMetadata, producer sarama.SyncProducer, err error) {
 	if len(triggerFields.ErrorTopic) > 0 {
 		_, _, e := producer.SendMessage(&sarama.ProducerMessage{
 			Topic: triggerFields.ErrorTopic,
@@ -394,7 +396,7 @@ func main() {
 		return
 	}
 
-	triggerFields, err := ParseFissionMetadata()
+	triggerFields, err := common.ParseFissionMetadata()
 	if err != nil {
 		logger.Error("Failed to parse fission trigger fields", zap.Error(err))
 		return
