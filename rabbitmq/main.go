@@ -32,8 +32,6 @@ func parseRabbitMQConnData() (rabbitMQConnData, error) {
 
 	if os.Getenv("INCLUDE_UNACKED") != "true" {
 		data.includeUnacked = true
-	} else {
-		data.includeUnacked = false
 	}
 
 	data.queueName = os.Getenv("QUEUE_NAME")
@@ -41,17 +39,15 @@ func parseRabbitMQConnData() (rabbitMQConnData, error) {
 		return data, fmt.Errorf("received empty queue name")
 	}
 
-	host := ""
 	if data.includeUnacked {
-		host = os.Getenv("HOST")
+		data.url = os.Getenv("HOST")
 	} else {
 		data.includeUnacked = true
-		host = os.Getenv("API_HOST")
+		data.url = os.Getenv("API_HOST")
 	}
-	if host == "" {
+	if data.url == "" {
 		return data, fmt.Errorf("received empty host field")
 	}
-	data.url = host
 	return data, nil
 }
 
@@ -73,21 +69,17 @@ func consumeMessage(data rabbitMQConnData, logger *zap.Logger, producerChannel, 
 	)
 	failOnError(logger, err, "failed while reading messages")
 
-	forever := make(chan bool)
-
-	go func() {
-		for d := range msgs {
-			success := handleFissionFunction(d, data, logger, producerChannel, consumerChannel)
+	for d := range msgs {
+		go func(d amqp.Delivery) {
+			success := handleHTTPUrl(d, data, logger, producerChannel, consumerChannel)
 			if success {
 				d.Ack(false)
 			}
-		}
-	}()
-	logger.Info("Waiting for messages")
-	<-forever
+		}(d)
+	}
 }
 
-func handleFissionFunction(d amqp.Delivery, data rabbitMQConnData, logger *zap.Logger, producerChannel, consumerChannel *amqp.Channel) bool {
+func handleHTTPUrl(d amqp.Delivery, data rabbitMQConnData, logger *zap.Logger, producerChannel, consumerChannel *amqp.Channel) bool {
 	var value string = string(d.Body)
 	// Generate the Headers
 	fissionHeaders := map[string]string{
