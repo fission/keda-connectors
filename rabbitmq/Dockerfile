@@ -10,6 +10,7 @@ COPY go.sum .
 
 RUN go mod download
 
+# Copy source code to image
 COPY . .
 
 RUN go build -a -o /go/bin/main
