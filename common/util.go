@@ -17,15 +17,15 @@ type ConnectorMetadata struct {
 	Topic         string
 	ResponseTopic string
 	ErrorTopic    string
-	FunctionURL   string
+	HTTPEndpoint  string
 	MaxRetries    int
 	ContentType   string
-	TriggerName   string
+	SourceName    string
 }
 
 // ParseConnectorMetadata parses connector side common fields and returns as ConnectorMetadata or returns error
 func ParseConnectorMetadata() (ConnectorMetadata, error) {
-	for _, envVars := range []string{"TOPIC", "FUNCTION_URL", "MAX_RETRIES", "CONTENT_TYPE", "TRIGGER_NAME"} {
+	for _, envVars := range []string{"TOPIC", "HTTP_ENDPOINT", "MAX_RETRIES", "CONTENT_TYPE"} {
 		if os.Getenv(envVars) == "" {
 			return ConnectorMetadata{}, fmt.Errorf("environment variable not found: %v", envVars)
 		}
@@ -34,9 +34,12 @@ func ParseConnectorMetadata() (ConnectorMetadata, error) {
 		Topic:         os.Getenv("TOPIC"),
 		ResponseTopic: os.Getenv("RESPONSE_TOPIC"),
 		ErrorTopic:    os.Getenv("ERROR_TOPIC"),
-		FunctionURL:   os.Getenv("FUNCTION_URL"),
+		HTTPEndpoint:  os.Getenv("HTTP_ENDPOINT"),
 		ContentType:   os.Getenv("CONTENT_TYPE"),
-		TriggerName:   os.Getenv("TRIGGER_NAME"),
+		SourceName:    os.Getenv("SOURCE_NAME"),
+	}
+	if meta.SourceName == "" {
+		meta.SourceName = "KEDAConnector"
 	}
 	val, err := strconv.ParseInt(strings.TrimSpace(os.Getenv("MAX_RETRIES")), 0, 64)
 	if err != nil {
@@ -49,9 +52,9 @@ func ParseConnectorMetadata() (ConnectorMetadata, error) {
 // HandleHTTPRequest sends message and headers data to HTTP endpoint using POST method and returns error in case of failure
 func HandleHTTPRequest(message string, headers map[string]string, data ConnectorMetadata, logger *zap.Logger) error {
 	// Create request
-	req, err := http.NewRequest("POST", data.FunctionURL, strings.NewReader(message))
+	req, err := http.NewRequest("POST", data.HTTPEndpoint, strings.NewReader(message))
 	if err != nil {
-		return errors.Wrapf(err, "failed to create HTTP request to invoke function. function_url: %v, trigger %v", data.FunctionURL, data.TriggerName)
+		return errors.Wrapf(err, "failed to create HTTP request to invoke function. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
 	}
 	// Add headers
 	for k, v := range headers {
@@ -65,8 +68,8 @@ func HandleHTTPRequest(message string, headers map[string]string, data Connector
 		if err != nil {
 			logger.Error("sending function invocation request failed",
 				zap.Error(err),
-				zap.String("function_url", data.FunctionURL),
-				zap.String("trigger", data.TriggerName))
+				zap.String("http_endpoint", data.HTTPEndpoint),
+				zap.String("source", data.SourceName))
 			continue
 		}
 		if resp == nil {
@@ -79,21 +82,21 @@ func HandleHTTPRequest(message string, headers map[string]string, data Connector
 	}
 
 	if resp == nil {
-		return fmt.Errorf("every function invocation retry failed; final retry gave empty response. function_url: %v, trigger %v", data.FunctionURL, data.TriggerName)
+		return fmt.Errorf("every function invocation retry failed; final retry gave empty response. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 
 	logger.Debug("got response from function invocation",
-		zap.String("function_url", data.FunctionURL),
-		zap.String("trigger", data.TriggerName),
+		zap.String("http_endpoint", data.HTTPEndpoint),
+		zap.String("source", data.SourceName),
 		zap.String("body", string(body)))
 
 	if err != nil {
-		return errors.Wrapf(err, "request body error: %v. function_url: %v, trigger %v", string(body), data.FunctionURL, data.TriggerName)
+		return errors.Wrapf(err, "request body error: %v. http_endpoint: %v, source: %v", string(body), data.HTTPEndpoint, data.SourceName)
 	}
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("request returned failure: %v. function_url: %v, trigger %v", resp.StatusCode, data.FunctionURL, data.TriggerName)
+		return fmt.Errorf("request returned failure: %v. http_endpoint: %v, source: %v", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
 	}
 	return nil
 }
