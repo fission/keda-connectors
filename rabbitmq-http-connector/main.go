@@ -1,11 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
-	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
 	"go.uber.org/zap"
 
@@ -18,46 +16,6 @@ type rabbitMQConnector struct {
 	consumerChannel *amqp.Channel
 	producerChannel *amqp.Channel
 	logger          *zap.Logger
-}
-
-func newRabbitMQConnector() (*rabbitMQConnector, error) {
-	connectordata, err := common.ParseConnectorMetadata()
-	if err != nil {
-		return &rabbitMQConnector{}, err
-	}
-
-	host := os.Getenv("HOST")
-	if os.Getenv("INCLUDE_UNACKED") == "true" {
-		return &rabbitMQConnector{}, fmt.Errorf("only amqp protocol host is supported")
-	}
-	if host == "" {
-		return &rabbitMQConnector{}, fmt.Errorf("received empty host field")
-	}
-
-	connection, err := amqp.Dial(host)
-	if err != nil {
-		return &rabbitMQConnector{}, errors.Wrapf(err, "failed to establish connection with RabbitMQ")
-	}
-	defer connection.Close()
-
-	producerChannel, err := connection.Channel()
-	if err != nil {
-		return &rabbitMQConnector{}, errors.Wrapf(err, "failed to open RabbitMQ channel for producer")
-	}
-	defer producerChannel.Close()
-
-	consumerChannel, err := connection.Channel()
-	if err != nil {
-		return &rabbitMQConnector{}, errors.Wrapf(err, "failed to open RabbitMQ channel for consumer")
-	}
-	defer consumerChannel.Close()
-
-	return &rabbitMQConnector{
-		host:            host,
-		connectordata:   connectordata,
-		consumerChannel: consumerChannel,
-		producerChannel: producerChannel,
-	}, nil
 }
 
 func (conn rabbitMQConnector) consumeMessage() {
@@ -160,9 +118,46 @@ func (conn rabbitMQConnector) responseHandler(response string) bool {
 }
 
 func main() {
-	conn, err := newRabbitMQConnector()
+	logger, err := zap.NewProduction()
 	if err != nil {
-		log.Fatalf("failed to create connection %s", err)
+		log.Fatalf("can't initialize zap logger: %v", err)
+	}
+	defer logger.Sync()
+
+	connectordata, err := common.ParseConnectorMetadata()
+
+	host := os.Getenv("HOST")
+	if os.Getenv("INCLUDE_UNACKED") == "true" {
+		logger.Fatal("only amqp protocol host is supported")
+	}
+	if host == "" {
+		logger.Fatal("received empty host field")
+	}
+
+	connection, err := amqp.Dial(host)
+	if err != nil {
+		logger.Fatal("failed to establish connection with RabbitMQ", zap.Error(err))
+	}
+	defer connection.Close()
+
+	producerChannel, err := connection.Channel()
+	if err != nil {
+		logger.Fatal("failed to open RabbitMQ channel for producer", zap.Error(err))
+	}
+	defer producerChannel.Close()
+
+	consumerChannel, err := connection.Channel()
+	if err != nil {
+		logger.Fatal("failed to open RabbitMQ channel for consumer", zap.Error(err))
+	}
+	defer consumerChannel.Close()
+
+	conn := rabbitMQConnector{
+		host:            host,
+		connectordata:   connectordata,
+		consumerChannel: consumerChannel,
+		producerChannel: producerChannel,
+		logger:          logger,
 	}
 	conn.consumeMessage()
 }
