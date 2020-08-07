@@ -49,16 +49,19 @@ func ParseConnectorMetadata() (ConnectorMetadata, error) {
 	return meta, nil
 }
 
-// HandleHTTPRequest sends message and headers data to HTTP endpoint using POST method and returns error in case of failure
-func HandleHTTPRequest(message string, headers map[string]string, data ConnectorMetadata, logger *zap.Logger) (string, error) {
+// HandleHTTPRequest sends message and headers data to HTTP endpoint using POST method and returns response on success or error in case of failure
+func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetadata, logger *zap.Logger) (*http.Response, error) {
 	// Create request
 	req, err := http.NewRequest("POST", data.HTTPEndpoint, strings.NewReader(message))
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to create HTTP request to invoke function. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
+		return nil, errors.Wrapf(err, "failed to create HTTP request to invoke function. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
 	}
+
 	// Add headers
-	for k, v := range headers {
-		req.Header.Set(k, v)
+	for key, vals := range headers {
+		for _, val := range vals {
+			req.Header.Add(key, val)
+		}
 	}
 
 	var resp *http.Response
@@ -82,7 +85,7 @@ func HandleHTTPRequest(message string, headers map[string]string, data Connector
 	}
 
 	if resp == nil {
-		return "", fmt.Errorf("every function invocation retry failed; final retry gave empty response. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
+		return nil, fmt.Errorf("every function invocation retry failed; final retry gave empty response. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
@@ -93,10 +96,10 @@ func HandleHTTPRequest(message string, headers map[string]string, data Connector
 		zap.String("body", string(body)))
 
 	if err != nil {
-		return "", errors.Wrapf(err, "request body error: %v. http_endpoint: %v, source: %v", string(body), data.HTTPEndpoint, data.SourceName)
+		return nil, errors.Wrapf(err, "request body error: %v. http_endpoint: %v, source: %v", string(body), data.HTTPEndpoint, data.SourceName)
 	}
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("request returned failure: %v. http_endpoint: %v, source: %v", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
+		return nil, fmt.Errorf("request returned failure: %v. http_endpoint: %v, source: %v", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
 	}
-	return string(body), nil
+	return resp, nil
 }
