@@ -91,20 +91,25 @@ func (conn rabbitMQConnector) consumeMessage() {
 	}
 
 	forever := make(chan bool)
+	sem := make(chan int, 10) // Process maximum 10 messages concurrently
 
-	for d := range msgs {
-		go func(d amqp.Delivery) {
-			msg := string(d.Body)
-			respBody, err := common.HandleHTTPRequest(msg, headers, conn.connectordata, conn.logger)
-			if err != nil {
-				conn.errorHandler(err)
-			} else {
-				if success := conn.responseHandler(respBody); success {
-					d.Ack(false)
+	go func() {
+		for d := range msgs {
+			sem <- 1
+			go func(d amqp.Delivery) {
+				msg := string(d.Body)
+				respBody, err := common.HandleHTTPRequest(msg, headers, conn.connectordata, conn.logger)
+				if err != nil {
+					conn.errorHandler(err)
+				} else {
+					if success := conn.responseHandler(respBody); success {
+						d.Ack(false)
+					}
 				}
-			}
-		}(d)
-	}
+				<-sem
+			}(d)
+		}
+	}()
 
 	conn.logger.Info("RabbitMQ consumer up and running!...")
 	<-forever
