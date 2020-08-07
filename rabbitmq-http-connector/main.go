@@ -13,7 +13,6 @@ import (
 )
 
 type rabbitMQConnector struct {
-	queueName       string
 	host            string
 	connectordata   common.ConnectorMetadata
 	consumerChannel *amqp.Channel
@@ -35,11 +34,6 @@ func newRabbitMQConnector() (*rabbitMQConnector, error) {
 		return &rabbitMQConnector{}, fmt.Errorf("received empty host field")
 	}
 
-	queueName := os.Getenv("QUEUE_NAME")
-	if queueName == "" {
-		return &rabbitMQConnector{}, fmt.Errorf("received empty queue name")
-	}
-
 	connection, err := amqp.Dial(host)
 	if err != nil {
 		return &rabbitMQConnector{}, errors.Wrapf(err, "failed to establish connection with RabbitMQ")
@@ -59,7 +53,6 @@ func newRabbitMQConnector() (*rabbitMQConnector, error) {
 	defer consumerChannel.Close()
 
 	return &rabbitMQConnector{
-		queueName:       queueName,
 		host:            host,
 		connectordata:   connectordata,
 		consumerChannel: consumerChannel,
@@ -69,13 +62,13 @@ func newRabbitMQConnector() (*rabbitMQConnector, error) {
 
 func (conn rabbitMQConnector) consumeMessage() {
 	msgs, err := conn.consumerChannel.Consume(
-		conn.queueName, // queue
-		"",             // consumer
-		false,          // auto-ack
-		false,          // exclusive
-		false,          // no-local
-		false,          // no-wait
-		nil,            // args
+		conn.connectordata.Topic, // queue
+		"",                       // consumer
+		false,                    // auto-ack
+		false,                    // exclusive
+		false,                    // no-local
+		false,                    // no-wait
+		nil,                      // args
 	)
 
 	if err != nil {
