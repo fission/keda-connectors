@@ -203,13 +203,6 @@ func (conn *kafkaConnector) Cleanup(sarama.ConsumerGroupSession) error {
 
 // ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages()
 func (conn *kafkaConnector) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	commonHeaders := http.Header{
-		"Topic":        {conn.connectorData.Topic},
-		"RespTopic":    {conn.connectorData.ResponseTopic},
-		"ErrorTopic":   {conn.connectorData.ErrorTopic},
-		"Content-Type": {conn.connectorData.ContentType},
-		"Source-Name":  {conn.connectorData.SourceName},
-	}
 
 	// NOTE:
 	// Do not move the code below to a goroutine.
@@ -219,14 +212,14 @@ func (conn *kafkaConnector) ConsumeClaim(session sarama.ConsumerGroupSession, cl
 		conn.logger.Info(fmt.Sprintf("Message claimed: value = %s, timestamp = %v, topic = %s", string(message.Value), message.Timestamp, message.Topic))
 		msg := string(message.Value)
 
-		var headers http.Header
-		// Add commonHeaders
-		// Using Header.Add() as msg.Headers may have keys with more than one value
-		for key, vals := range commonHeaders {
-			for _, val := range vals {
-				headers.Add(key, val)
-			}
+		headers := http.Header{
+			"Topic":        {conn.connectorData.Topic},
+			"RespTopic":    {conn.connectorData.ResponseTopic},
+			"ErrorTopic":   {conn.connectorData.ErrorTopic},
+			"Content-Type": {conn.connectorData.ContentType},
+			"Source-Name":  {conn.connectorData.SourceName},
 		}
+
 		// Set the headers came from Kafka record
 		for _, h := range message.Headers {
 			headers.Add(string(h.Key), string(h.Value))
@@ -276,7 +269,7 @@ func (conn *kafkaConnector) errorHandler(err error) {
 		conn.logger.Error("message received to publish to error topic, but no error topic was set",
 			zap.String("message", err.Error()),
 			zap.String("source", conn.connectorData.SourceName),
-			zap.String("function_url", conn.connectorData.HTTPEndpoint),
+			zap.String("http endpoint", conn.connectorData.HTTPEndpoint),
 		)
 	}
 }
@@ -332,7 +325,7 @@ func main() {
 
 	connData, err := common.ParseConnectorMetadata()
 	if err != nil {
-		logger.Error("Failed to parse fission trigger fields", zap.Error(err))
+		logger.Error("Failed to parse connector meta data", zap.Error(err))
 		return
 	}
 
