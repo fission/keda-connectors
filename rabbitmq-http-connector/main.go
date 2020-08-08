@@ -1,7 +1,9 @@
 package main
 
 import (
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/streadway/amqp"
@@ -33,12 +35,12 @@ func (conn rabbitMQConnector) consumeMessage() {
 		conn.logger.Fatal("error occurred while consuming message", zap.Error(err))
 	}
 
-	headers := map[string]string{
-		"Topic":        conn.connectordata.Topic,
-		"RespTopic":    conn.connectordata.ResponseTopic,
-		"ErrorTopic":   conn.connectordata.ErrorTopic,
-		"Content-Type": conn.connectordata.ContentType,
-		"Source-Name":  conn.connectordata.SourceName,
+	headers := http.Header{
+		"Topic":        {conn.connectordata.Topic},
+		"RespTopic":    {conn.connectordata.ResponseTopic},
+		"ErrorTopic":   {conn.connectordata.ErrorTopic},
+		"Content-Type": {conn.connectordata.ContentType},
+		"Source-Name":  {conn.connectordata.SourceName},
 	}
 
 	forever := make(chan bool)
@@ -49,12 +51,18 @@ func (conn rabbitMQConnector) consumeMessage() {
 			sem <- 1
 			go func(d amqp.Delivery) {
 				msg := string(d.Body)
-				respBody, err := common.HandleHTTPRequest(msg, headers, conn.connectordata, conn.logger)
+				resp, err := common.HandleHTTPRequest(msg, headers, conn.connectordata, conn.logger)
 				if err != nil {
 					conn.errorHandler(err)
 				} else {
-					if success := conn.responseHandler(respBody); success {
-						d.Ack(false)
+					defer resp.Body.Close()
+					body, err := ioutil.ReadAll(resp.Body)
+					if err != nil {
+						conn.errorHandler(err)
+					} else {
+						if success := conn.responseHandler(string(body)); success {
+							d.Ack(false)
+						}
 					}
 				}
 				<-sem
