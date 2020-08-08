@@ -3,8 +3,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/fission/keda-connectors/common v0.0.0-20200807185237-3355d0bdde58 h1:kNlP76whuzJQ666sH99hsKjH51AS0RkeJjnCWhWPZCk=
-github.com/fission/keda-connectors/common v0.0.0-20200807185237-3355d0bdde58/go.mod h1:WGr9mV3DArFdiSCg6PKXaeQ5XPNzZY4aWAj/oL63+qo=
+github.com/fission/keda-connectors/common v0.0.0-20200808095510-49748b1b30fd h1:YAXJ7QsDxvS330pcHe4b8Fp+0qDtMY0xYBevy70bv80=
+github.com/fission/keda-connectors/common v0.0.0-20200808095510-49748b1b30fd/go.mod h1:WGr9mV3DArFdiSCg6PKXaeQ5XPNzZY4aWAj/oL63+qo=
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/kr/pretty v0.1.0 h1:L/CwN0zerZDmRFUapSPitk6f+Q3+0za1rQkzVuMiMFI=
