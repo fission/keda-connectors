@@ -4,16 +4,16 @@ Kafka KEDA connector image can be used in the Kubernetes deployment as scaleTarg
 
 The job of the connector is to read messages from the topic, call an HTTP endpoint with the body of the message, and write response or error in the respective topics. Following enviornment variables are used by connector image as configuration to connect and authenticate with Apache Kafka cluster which should be defined in the Kubernetes deployment manifest.
 
-- `TOPIC`: topic from which messages are read
-- `FUNCTION_URL`: http endpoint to post request
+- `TOPIC`: topic from which messages are read.
+- `HTTP_ENDPOINT`: http endpoint to post request.
 - `ERROR_TOPIC`: Optional. Topic to write errors on failure.
 - `RESPONSE_TOPIC`: Optional. Topic to write responses on success response.
-- `TRIGGER_NAME`: Name of the Trigger
+- `SOURCE_NAME`: Optional. Name of the Source. Default is "KEDAConnector".
 - `MAX_RETRIES`: Maximum number of times an http endpoint will be retried upon failure.
-- `CONTENT_TYPE`: Content type used while creating post request
+- `CONTENT_TYPE`: Content type used while creating post request.
 - `BROKER_LIST`: comma separated list of Kafka brokers “hostname:port” to connect to for bootstrap (DEPRECATED).
 - `BOOTSTRAP_SERVERS`: Comma separated list of Kafka brokers “hostname:port” to connect to for bootstrap.
-- `CONSUMER_GROUP`: Kafka consumer group
+- `CONSUMER_GROUP`: Kafka consumer group.
 - `AUTH_MODE`: Kafka sasl auth mode. Optional. The default value is none. For now, it must be one of none, sasl_plaintext, sasl_ssl, sasl_ssl_plain, sasl_scram_sha256, sasl_scram_sha512.
 - `USERNAME`: Optional. If authmode is not none, this is required.
 - `PASSWORD`: Optional. If authmode is not none, this is required.
