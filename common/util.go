@@ -2,7 +2,6 @@ package common
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -87,17 +86,7 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 	if resp == nil {
 		return nil, fmt.Errorf("every function invocation retry failed; final retry gave empty response. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
 
-	logger.Debug("got response from function invocation",
-		zap.String("http_endpoint", data.HTTPEndpoint),
-		zap.String("source", data.SourceName),
-		zap.String("body", string(body)))
-
-	if err != nil {
-		return nil, errors.Wrapf(err, "request body error: %v. http_endpoint: %v, source: %v", string(body), data.HTTPEndpoint, data.SourceName)
-	}
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("request returned failure: %v. http_endpoint: %v, source: %v", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
 	}
