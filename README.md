@@ -40,7 +40,7 @@ The job of the connector is to read messages from the topic, invoke a HTTP endpo
 }
 ```
 
-6. Invoke HTTP endpoint per consumed message in a retry loop using max retries parameter specified.
+6. Invoke HTTP endpoint per consumed message in a retry loop using max retries parameter specified. You can reuse the already available method for calling HTTP endpoints: https://github.com/fission/keda-connectors/blob/master/common/util.go#L52
 
 7. Write the response in response queue, if the reponse topic is specified.
 
