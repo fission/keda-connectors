@@ -4,7 +4,7 @@
 
 Keda Connectors provide you readymade generic images to process events for standard tasks. For example if you are going to read messages from RabbitMQ and then call an HTTP endpoint then you can use [RabbitMQ HTTP Connector](./rabbitmq-http-connector/README.md). You just have to create a standard deployment manifest with all env variables needed for the pod.
 
-These connectors are used by [Fission](http://github.com/fission/fission) project for 
+These connectors are used in [Fission](http://github.com/fission/fission) project for integrating events to call functions via MQTrigger CRD.
 
 # Connector List
 
