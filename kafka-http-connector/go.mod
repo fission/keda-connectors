@@ -4,7 +4,7 @@ go 1.12
 
 require (
 	github.com/Shopify/sarama v1.23.1
-	github.com/fission/keda-connectors/common v0.0.0-20200808095510-49748b1b30fd
+	github.com/fission/keda-connectors/common v0.0.0-20200809052657-5ab20c06c62f
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.5.1 // indirect
