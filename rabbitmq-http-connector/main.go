@@ -39,7 +39,7 @@ func (conn rabbitMQConnector) consumeMessage() {
 		"KEDA-Topic":          {conn.connectordata.Topic},
 		"KEDA-Response-Topic": {conn.connectordata.ResponseTopic},
 		"KEDA-Error-Topic":    {conn.connectordata.ErrorTopic},
-		"KEDA-Content-Type":   {conn.connectordata.ContentType},
+		"Content-Type":        {conn.connectordata.ContentType},
 		"KEDA-Source-Name":    {conn.connectordata.SourceName},
 	}
 

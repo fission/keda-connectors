@@ -216,7 +216,7 @@ func (conn *kafkaConnector) ConsumeClaim(session sarama.ConsumerGroupSession, cl
 			"KEDA-Topic":          {conn.connectorData.Topic},
 			"KEDA-Response-Topic": {conn.connectorData.ResponseTopic},
 			"KEDA-Error-Topic":    {conn.connectorData.ErrorTopic},
-			"KEDA-Content-Type":   {conn.connectorData.ContentType},
+			"Content-Type":        {conn.connectorData.ContentType},
 			"KEDA-Source-Name":    {conn.connectorData.SourceName},
 		}
 
