@@ -33,10 +33,10 @@ The job of the connector is to read messages from the topic, invoke a HTTP endpo
 
 ```
 {
-   "Topic": Topic,
-   "RespTopic": ResponseTopic,
-   "ErrorTopic": ErrorTopic,
-   "Content-Type": ContentType
+   "KEDA-Topic": Topic,
+   "KEDA-Response-Topic": ResponseTopic,
+   "KEDA-Error-Topic": ErrorTopic,
+   "KEDA-Content-Type": ContentType
 }
 ```
 
