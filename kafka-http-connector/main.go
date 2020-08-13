@@ -213,11 +213,11 @@ func (conn *kafkaConnector) ConsumeClaim(session sarama.ConsumerGroupSession, cl
 		msg := string(message.Value)
 
 		headers := http.Header{
-			"Topic":        {conn.connectorData.Topic},
-			"RespTopic":    {conn.connectorData.ResponseTopic},
-			"ErrorTopic":   {conn.connectorData.ErrorTopic},
-			"Content-Type": {conn.connectorData.ContentType},
-			"Source-Name":  {conn.connectorData.SourceName},
+			"KEDA-Topic":          {conn.connectorData.Topic},
+			"KEDA-Response-Topic": {conn.connectorData.ResponseTopic},
+			"KEDA-Error-Topic":    {conn.connectorData.ErrorTopic},
+			"KEDA-Content-Type":   {conn.connectorData.ContentType},
+			"KEDA-Source-Name":    {conn.connectorData.SourceName},
 		}
 
 		// Set the headers came from Kafka record
