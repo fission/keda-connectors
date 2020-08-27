@@ -21,7 +21,7 @@ The job of the connector is to read messages from the topic, invoke a HTTP endpo
 
 ### Following are steps required to write a connector:
 
-1. [Message Queue Trigger Spec](https://github.com/fission/fission/blob/master/pkg/mqtrigger/scalermanager.go#L163) fields are exposed as environment variables while creating deployment which will be utilized while creating consumer, producer, and during function invocation. Parse all required parameters required by the connector. 
+1. [Message Queue Trigger Spec](https://github.com/fission/fission/blob/master/pkg/mqtrigger/scalermanager.go#L163) fields are exposed as environment variables while creating deployment which will be utilized while creating consumer, producer, and during function invocation. Parse all required parameters required by the connector.
 
 2. Create a Consumer for the queue.
 
@@ -33,9 +33,9 @@ The job of the connector is to read messages from the topic, invoke a HTTP endpo
 
 ```
 {
-   "X-Fission-MQTrigger-Topic": Topic,
-   "X-Fission-MQTrigger-RespTopic": ResponseTopic,
-   "X-Fission-MQTrigger-ErrorTopic": ErrorTopic,
+   "KEDA-Topic": Topic,
+   "KEDA-Response-Topic": ResponseTopic,
+   "KEDA-Error-Topic": ErrorTopic,
    "Content-Type": ContentType
 }
 ```
@@ -48,4 +48,4 @@ The job of the connector is to read messages from the topic, invoke a HTTP endpo
 
 9. The final step would be to write a dockerfile to create docker image of the code.
 
-Refer to [Kafka HTTP Connector](./kafka-http-connector/README.md) or [RabbitMQ HTTP Connector](./rabbitmq-http-connector/README.md) for sample  implementations.
+Refer to [Kafka HTTP Connector](./kafka-http-connector/README.md) or [RabbitMQ HTTP Connector](./rabbitmq-http-connector/README.md) for sample implementations.
