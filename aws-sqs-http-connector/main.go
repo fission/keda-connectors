@@ -1,17 +1,18 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 	"io/ioutil"
+	"log"
+
 	"net/http"
 	"os"
-
-	"log"
 
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/fission/keda-connectors/common"
@@ -25,6 +26,8 @@ type awsSQSConnector struct {
 }
 
 func (conn awsSQSConnector) consumeMessage() {
+	var maxNumberOfMessages = int64(10) // Process maximum 10 messages concurrently
+	var waitTimeSeconds = int64(5)      //Wait 5 sec to process another message
 	headers := http.Header{
 		"KEDA-Topic":          {conn.connectordata.Topic},
 		"KEDA-Response-Topic": {conn.connectordata.ResponseTopic},
@@ -33,32 +36,41 @@ func (conn awsSQSConnector) consumeMessage() {
 		"KEDA-Source-Name":    {conn.connectordata.SourceName},
 	}
 	consQueueURL := conn.sqsURL + os.Getenv("TOPIC")
+	respQueueURL := conn.sqsURL + os.Getenv("RESPONSE_TOPIC")
+	errorQueueURL := conn.sqsURL + os.Getenv("ERROR_TOPIC")
 	for {
 		output, err := conn.sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
 			QueueUrl:            &consQueueURL,
-			MaxNumberOfMessages: aws.Int64(1),
-			WaitTimeSeconds:     aws.Int64(5),
+			MaxNumberOfMessages: &maxNumberOfMessages,
+			WaitTimeSeconds:     &waitTimeSeconds,
 		})
 
 		if err != nil {
-			fmt.Printf("failed to fetch sqs message %v", err)
+			conn.logger.Error("failed to fetch sqs message", zap.Error(err))
 		}
 
 		for _, message := range output.Messages {
 			resp, err := common.HandleHTTPRequest(*message.Body, headers, conn.connectordata, conn.logger)
 			if err != nil {
-				conn.errorHandler(err)
-				fmt.Println("Error")
+				conn.errorHandler(errorQueueURL, err)
 			} else {
 				defer resp.Body.Close()
 				body, err := ioutil.ReadAll(resp.Body)
 				if err != nil {
-					conn.errorHandler(err)
-					fmt.Println("Error")
+					conn.errorHandler(errorQueueURL, err)
 				} else {
-					if success := conn.responseHandler(string(body)); success {
+					//Generating SQS Message attribute
+					var sqsMessageAttValue = make(map[string]*sqs.MessageAttributeValue)
+					for k, v := range resp.Header {
+						for _, d := range v {
+							sqsMessageAttValue[k] = &sqs.MessageAttributeValue{
+								DataType:    aws.String("String"),
+								StringValue: aws.String(d),
+							}
+						}
+					}
+					if success := conn.responseHandler(respQueueURL, string(body), sqsMessageAttValue); success {
 						conn.deleteMessage(*message.ReceiptHandle, consQueueURL)
-						fmt.Println("Done")
 					}
 				}
 			}
@@ -66,27 +78,13 @@ func (conn awsSQSConnector) consumeMessage() {
 	}
 }
 
-func (conn awsSQSConnector) responseHandler(response string) bool {
-	respQueueURL := conn.sqsURL + os.Getenv("RESPONSE_TOPIC")
-	if len(conn.connectordata.ResponseTopic) > 0 {
+func (conn awsSQSConnector) responseHandler(queueURL string, response string, messageAttValue map[string]*sqs.MessageAttributeValue) bool {
+	if queueURL != "" {
 		_, err := conn.sqsClient.SendMessage(&sqs.SendMessageInput{
-			DelaySeconds: aws.Int64(10),
-			MessageAttributes: map[string]*sqs.MessageAttributeValue{
-				"Title": &sqs.MessageAttributeValue{
-					DataType:    aws.String("String"),
-					StringValue: aws.String("The Whistler"),
-				},
-				"Author": &sqs.MessageAttributeValue{
-					DataType:    aws.String("String"),
-					StringValue: aws.String("John Grisham"),
-				},
-				"WeeksOn": &sqs.MessageAttributeValue{
-					DataType:    aws.String("Number"),
-					StringValue: aws.String("6"),
-				},
-			},
-			MessageBody: &response,
-			QueueUrl:    &respQueueURL,
+			DelaySeconds:      aws.Int64(10),
+			MessageAttributes: messageAttValue,
+			MessageBody:       &response,
+			QueueUrl:          &queueURL,
 		})
 		if err != nil {
 			conn.logger.Error("failed to publish response body from http request to topic",
@@ -101,29 +99,14 @@ func (conn awsSQSConnector) responseHandler(response string) bool {
 	return true
 }
 
-func (conn *awsSQSConnector) errorHandler(err error) {
-	errorQueueURL := conn.sqsURL + os.Getenv("ERROR_TOPIC")
-
-	if len(conn.connectordata.ErrorTopic) > 0 {
+func (conn *awsSQSConnector) errorHandler(queueURL string, err error) {
+	if queueURL != "" {
 		errMsg := err.Error()
-		result, err := conn.sqsClient.SendMessage(&sqs.SendMessageInput{
+		_, err := conn.sqsClient.SendMessage(&sqs.SendMessageInput{
 			DelaySeconds: aws.Int64(10),
-			MessageAttributes: map[string]*sqs.MessageAttributeValue{
-				"Title": &sqs.MessageAttributeValue{
-					DataType:    aws.String("String"),
-					StringValue: aws.String("The Whistler"),
-				},
-				"Author": &sqs.MessageAttributeValue{
-					DataType:    aws.String("String"),
-					StringValue: aws.String("John Grisham"),
-				},
-				"WeeksOn": &sqs.MessageAttributeValue{
-					DataType:    aws.String("Number"),
-					StringValue: aws.String("6"),
-				},
-			},
+			//MessageAttributes: messageAttValue,
 			MessageBody: &errMsg,
-			QueueUrl:    &errorQueueURL,
+			QueueUrl:    &queueURL,
 		})
 		if err != nil {
 			conn.logger.Error("failed to publish message to error topic",
@@ -132,8 +115,6 @@ func (conn *awsSQSConnector) errorHandler(err error) {
 				zap.String("message", err.Error()),
 				zap.String("topic", conn.connectordata.ErrorTopic))
 		}
-
-		fmt.Println("Success", *result.MessageId)
 	} else {
 		conn.logger.Error("message received to publish to error topic, but no error topic was set",
 			zap.String("message", err.Error()),
@@ -144,17 +125,40 @@ func (conn *awsSQSConnector) errorHandler(err error) {
 }
 
 func (conn *awsSQSConnector) deleteMessage(id string, queueURL string) {
-	resultDelete, err := conn.sqsClient.DeleteMessage(&sqs.DeleteMessageInput{
+	_, err := conn.sqsClient.DeleteMessage(&sqs.DeleteMessageInput{
 		QueueUrl:      &queueURL,
 		ReceiptHandle: &id,
 	})
 
 	if err != nil {
-		fmt.Println("Delete Error", err)
+		conn.logger.Error("Delete Error", zap.Error(err))
 		return
 	}
 
-	fmt.Println("Message Deleted", resultDelete)
+	conn.logger.Info("Message Deleted")
+}
+
+func getAwsConfig() (*aws.Config, error) {
+	if os.Getenv("AWS_REGION") == "" {
+		return nil, errors.New("aws region required")
+	}
+	config := &aws.Config{
+		Region: aws.String("us-east-1"),
+	}
+	if os.Getenv("AWS_ENDPOINT") != "" {
+		endpoint := os.Getenv("AWS_ENDPOINT")
+		config.Endpoint = &endpoint
+		return config, nil
+	}
+	if os.Getenv("AWS_ACCESS_KEY") != "" && os.Getenv("AWS_SECRET_KEY") != "" {
+		config.Credentials = credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS_KEY"), os.Getenv("AWS_SECRET_KEY"), "")
+		return config, nil
+	}
+	if os.Getenv("AWS_CRED_PATH") != "" && os.Getenv("AWS_CRED_PROFILE") != "" {
+		config.Credentials = credentials.NewSharedCredentials(os.Getenv("AWS_CRED_PATH"), os.Getenv("AWS_CRED_PROFILE"))
+		return config, nil
+	}
+	return nil, errors.New("no aws configuration specified")
 }
 
 func main() {
@@ -168,14 +172,15 @@ func main() {
 
 	connectordata, err := common.ParseConnectorMetadata()
 
-	url := "http://localhost:4576"
-	sess, _ := session.NewSession(&aws.Config{
-		Region:   aws.String("us-east-1"),
-		Endpoint: &url,
-	})
+	config, err := getAwsConfig()
+	if err != nil {
+		logger.Error("Failed to fetch aws config", zap.Error(err))
+		return
+	}
+	sess, _ := session.NewSession(config)
 	svc := sqs.New(sess)
 	conn := awsSQSConnector{
-		sqsURL:        "http://localhost:4576/000000000000/",
+		sqsURL:        os.Getenv("AWS_SQS_URL"),
 		sqsClient:     svc,
 		connectordata: connectordata,
 		logger:        logger,
