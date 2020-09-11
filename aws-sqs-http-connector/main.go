@@ -28,6 +28,7 @@ type awsSQSConnector struct {
 func (conn awsSQSConnector) consumeMessage() {
 	var maxNumberOfMessages = int64(10) // Process maximum 10 messages concurrently
 	var waitTimeSeconds = int64(5)      //Wait 5 sec to process another message
+
 	headers := http.Header{
 		"KEDA-Topic":          {conn.connectordata.Topic},
 		"KEDA-Response-Topic": {conn.connectordata.ResponseTopic},
@@ -35,9 +36,11 @@ func (conn awsSQSConnector) consumeMessage() {
 		"Content-Type":        {conn.connectordata.ContentType},
 		"KEDA-Source-Name":    {conn.connectordata.SourceName},
 	}
+
 	consQueueURL := conn.sqsURL + os.Getenv("TOPIC")
 	respQueueURL := conn.sqsURL + os.Getenv("RESPONSE_TOPIC")
 	errorQueueURL := conn.sqsURL + os.Getenv("ERROR_TOPIC")
+
 	for {
 		output, err := conn.sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
 			QueueUrl:            &consQueueURL,
@@ -177,6 +180,7 @@ func main() {
 		logger.Error("Failed to fetch aws config", zap.Error(err))
 		return
 	}
+
 	sess, _ := session.NewSession(config)
 	svc := sqs.New(sess)
 	conn := awsSQSConnector{
