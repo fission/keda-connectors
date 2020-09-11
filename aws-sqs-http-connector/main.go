@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -165,8 +164,6 @@ func getAwsConfig() (*aws.Config, error) {
 }
 
 func main() {
-	//TODO: this need to be removed
-	err := godotenv.Load()
 	logger, err := zap.NewProduction()
 	if err != nil {
 		log.Fatalf("can't initialize zap logger: %v", err)
