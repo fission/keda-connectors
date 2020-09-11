@@ -145,7 +145,7 @@ func getAwsConfig() (*aws.Config, error) {
 		return nil, errors.New("aws region required")
 	}
 	config := &aws.Config{
-		Region: aws.String("us-east-1"),
+		Region: aws.String(os.Getenv("AWS_REGION")),
 	}
 	if os.Getenv("AWS_ENDPOINT") != "" {
 		endpoint := os.Getenv("AWS_ENDPOINT")
