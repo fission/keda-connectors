@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"log"
+	"net/url"
 
 	"net/http"
 	"os"
@@ -18,10 +19,19 @@ import (
 )
 
 type awsSQSConnector struct {
-	sqsURL        string
+	sqsURL        *url.URL
 	sqsClient     *sqs.SQS
 	connectordata common.ConnectorMetadata
 	logger        *zap.Logger
+}
+
+func parseURL(baseURL *url.URL, queueName string) (string, error) {
+	u, err := url.Parse(queueName)
+	if err != nil {
+		return "", err
+	}
+	consQueueURL := baseURL.ResolveReference(u)
+	return consQueueURL.String(), nil
 }
 
 func (conn awsSQSConnector) consumeMessage() {
@@ -36,9 +46,18 @@ func (conn awsSQSConnector) consumeMessage() {
 		"KEDA-Source-Name":    {conn.connectordata.SourceName},
 	}
 
-	consQueueURL := conn.sqsURL + os.Getenv("TOPIC")
-	respQueueURL := conn.sqsURL + os.Getenv("RESPONSE_TOPIC")
-	errorQueueURL := conn.sqsURL + os.Getenv("ERROR_TOPIC")
+	consQueueURL, err := parseURL(conn.sqsURL, os.Getenv("TOPIC"))
+	if err != nil {
+		conn.logger.Error("failed to parse consumer queue url", zap.Error(err))
+	}
+	respQueueURL, err := parseURL(conn.sqsURL, os.Getenv("RESPONSE_TOPIC"))
+	if err != nil {
+		conn.logger.Error("failed to parse response queue url", zap.Error(err))
+	}
+	errorQueueURL, err := parseURL(conn.sqsURL, os.Getenv("ERROR_TOPIC"))
+	if err != nil {
+		conn.logger.Error("failed to parse error queue url", zap.Error(err))
+	}
 
 	for {
 		output, err := conn.sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
@@ -52,6 +71,11 @@ func (conn awsSQSConnector) consumeMessage() {
 		}
 
 		for _, message := range output.Messages {
+			// Set the attributes as message header came from SQS record
+			for k, v := range message.Attributes {
+				headers.Add(k, *v)
+			}
+
 			resp, err := common.HandleHTTPRequest(*message.Body, headers, conn.connectordata, conn.logger)
 			if err != nil {
 				conn.errorHandler(errorQueueURL, err)
@@ -133,11 +157,11 @@ func (conn *awsSQSConnector) deleteMessage(id string, queueURL string) {
 	})
 
 	if err != nil {
-		conn.logger.Error("Delete Error", zap.Error(err))
+		conn.logger.Error("delete Error", zap.Error(err))
 		return
 	}
 
-	conn.logger.Info("Message Deleted")
+	conn.logger.Info("message deleted")
 }
 
 func getAwsConfig() (*aws.Config, error) {
@@ -174,14 +198,25 @@ func main() {
 
 	config, err := getAwsConfig()
 	if err != nil {
-		logger.Error("Failed to fetch aws config", zap.Error(err))
+		logger.Error("failed to fetch aws config", zap.Error(err))
 		return
 	}
 
-	sess, _ := session.NewSession(config)
+	sess, err := session.NewSession(config)
+	if err != nil {
+		logger.Error("not able create session using aws configuation", zap.Error(err))
+		return
+	}
 	svc := sqs.New(sess)
+
+	sqsURL, err := url.Parse(os.Getenv("AWS_SQS_URL"))
+	if err != nil {
+		logger.Error("not able parse aws sqs url", zap.Error(err))
+		return
+	}
+
 	conn := awsSQSConnector{
-		sqsURL:        os.Getenv("AWS_SQS_URL"),
+		sqsURL:        sqsURL,
 		sqsClient:     svc,
 		connectordata: connectordata,
 		logger:        logger,
