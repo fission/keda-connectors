@@ -10,6 +10,7 @@ These connectors are used in [Fission](http://github.com/fission/fission) projec
 
 |Connectot Name | Description |
 |---|---|
+|[AWS SQS HTTP Connector](./aws-sqs-http-connector/README.md)|Reads message from AWS SQS and posts to a HTTP endpoint.|
 |[Kafka HTTP Connector](./kafka-http-connector/README.md)| Consumes messages from Kafka topics and posts the message to an HTTP endpoint.|
 |[RabbitMQ HTTP Connector](./rabbitmq-http-connector/README.md)|Reads message from RabbitMQ and posts to a HTTP endpoint. Currently only the AMQP protocol is supported for consuming RabbitMQ messages.|
 
