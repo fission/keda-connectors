@@ -1,5 +1,4 @@
-//TODO: check for new shards if get added
-//Records need to be passed
+//TODO: Records need to be passed
 //Read number of records
 
 package main
@@ -12,7 +11,6 @@ import (
 	"os/signal"
 	"reflect"
 	"sync"
-	"syscall"
 	"time"
 	"unsafe"
 
@@ -31,7 +29,7 @@ func listShards(kc *kinesis.Kinesis, streamName *string) ([]*kinesis.Shard, erro
 
 	stream, err := kc.DescribeStream(&kinesis.DescribeStreamInput{StreamName: streamName})
 	if err != nil {
-		fmt.Printf("received  err %v", err)
+		fmt.Printf("\nreceived  err %v", err)
 		return nil, err
 	}
 	return stream.StreamDescription.Shards, nil
@@ -43,17 +41,17 @@ func findNewShards(ctx context.Context, kc *kinesis.Kinesis, streamName *string,
 	shards := make(map[string]*kinesis.Shard)
 
 	var ticker = time.NewTicker(30 * time.Second)
-
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Printf("Done close")
+			fmt.Println("Done close")
 			ticker.Stop()
 			return
 		case <-ticker.C:
 			shardList, err := listShards(kc, streamName)
 
 			if err != nil {
+				ticker.Stop()
 				return
 			}
 
@@ -81,7 +79,7 @@ func getIterator(ctx context.Context, kc *kinesis.Kinesis, streamName string, sh
 	if checkpoint != "" {
 		iteratorOutput, err := kc.GetShardIteratorWithContext(aws.Context(ctx), &kinesis.GetShardIteratorInput{
 			ShardId:                &shardID,
-			ShardIteratorType:      aws.String("AFTER_SEQUENCE_NUMBER"),
+			ShardIteratorType:      aws.String(kinesis.ShardIteratorTypeAfterSequenceNumber),
 			StartingSequenceNumber: aws.String(checkpoint),
 			StreamName:             &streamName,
 		})
@@ -92,7 +90,7 @@ func getIterator(ctx context.Context, kc *kinesis.Kinesis, streamName string, sh
 	}
 	iteratorOutput, err := kc.GetShardIterator(&kinesis.GetShardIteratorInput{
 		ShardId:           &shardID,
-		ShardIteratorType: aws.String("TRIM_HORIZON"), //oldest data record in the shard
+		ShardIteratorType: aws.String(kinesis.ShardIteratorTypeTrimHorizon), //oldest data record in the shard
 		StreamName:        &streamName,
 	})
 	if err != nil {
@@ -105,7 +103,7 @@ func getRecords(kc *kinesis.Kinesis, shardIterator *string) (*kinesis.GetRecords
 	// get records use shard iterator for making request
 	records, err := kc.GetRecords(&kinesis.GetRecordsInput{
 		ShardIterator: shardIterator,
-		Limit:         aws.Int64(1),
+		Limit:         aws.Int64(3),
 	})
 	if err != nil {
 		return nil, err
@@ -131,17 +129,24 @@ func main() {
 	streamName := aws.String(*stream)
 
 	if err := kc.WaitUntilStreamExists(&kinesis.DescribeStreamInput{StreamName: streamName}); err != nil {
-		<-ctx.Done()
+		fmt.Println("Not able to connect to kinesis stream")
+		cancel()
 	}
 
 	shardc := make(chan *kinesis.Shard, 1)
 
 	go func() {
 		findNewShards(ctx, kc, streamName, shardc)
-		<-ctx.Done()
+		fmt.Println("canceling findNewShards")
+		cancel()
 		close(shardc)
 	}()
-
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt)
+	go func() {
+		<-signals
+		cancel() // call cancellation
+	}()
 	checkpoints := make(map[string]string)
 	deletedShards := make(map[string]bool)
 	var wg sync.WaitGroup
@@ -150,6 +155,8 @@ func main() {
 		wg.Add(1)
 		go func(shardId string, cp map[string]string) {
 			defer wg.Done()
+			scanTicker := time.NewTicker(1000)
+			defer scanTicker.Stop()
 			for {
 				if deletedShards[shardId] {
 					return
@@ -182,18 +189,17 @@ func main() {
 						}
 					}
 				}
+				select {
+				case <-ctx.Done():
+					return
+				case <-scanTicker.C:
+					continue
+				}
 			}
 
 		}(*s.ShardId, checkpoints)
 	}
-	sigterm := make(chan os.Signal, 1)
-	signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM)
-	select {
-	case <-ctx.Done():
-		fmt.Println("terminating: context cancelled")
-	case <-sigterm:
-		fmt.Println("terminating: via signal")
-	}
+	fmt.Println("Done terminating => via signal")
 	cancel()
 	wg.Wait()
 }
