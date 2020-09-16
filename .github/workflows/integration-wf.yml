@@ -38,12 +38,12 @@ jobs:
           docker push localhost:5000/kafka-connector:latest
       - name: Create Docker Image for Consumer
         run: |
-          cd integration/consumer/
+          cd integration/kafka/consumer/
           docker build -t localhost:5000/consumer:latest .
           docker push localhost:5000/consumer:latest
       - name: Deploy Kafka cluster
         run: |
-          cd integration/kafka/
+          cd integration/kafka/kubernetes/
           kubectl create namespace kafka
           curl -L http://strimzi.io/install/latest | sed 's/namespace: .*/namespace: kafka/' | kubectl apply -f - -n kafka
           sleep 10s
@@ -54,7 +54,7 @@ jobs:
           kubectl wait pod -l app.kubernetes.io/name=zookeeper --for=condition=ready --timeout=-1s -n kafka
       - name: Create Kafka topics
         run: |
-          cd integration/kafka/
+          cd integration/kafka/kubernetes/
           kubectl apply -f kafka-req-topic.yaml 
           kubectl apply -f kafka-err-topic.yaml
           kubectl apply -f kafka-res-topic.yaml
@@ -65,18 +65,18 @@ jobs:
           kubectl wait pod -l app=http --for=condition=ready --timeout=-1s -n kafka
       - name: Deploy Keda Connector and Keda ScaledObject
         run: |
-          cd integration/kafka/ 
+          cd integration/kafka/kubernetes/
           kubectl apply -f keda-deployment.yml
           kubectl wait pod -l keda=kafka --for=condition=ready --timeout=-1s -n kafka
           kubectl apply -f Keda-ScaledObj.yml 
       - name: Produce messages Using Producer
         run: |
-          cd integration/kafka/
-          kubectl apply -f job.yaml -n kafka
-          kubectl wait -f job.yaml --for=condition=complete --timeout=-1s -n kafka
+          cd integration/kafka/kubernetes/
+          kubectl apply -f kafka-produer.yaml -n kafka
+          kubectl wait -f kafka-produer.yaml --for=condition=complete --timeout=-1s -n kafka
       - name: Collect Consumer Messages
         run: |
-          cd integration/consumer/
+          cd integration/kafka/consumer/
           kubectl apply -f consumer-deployment.yaml
           kubectl wait pod -l app=consumer --for=condition=ready --timeout=-1s -n kafka
           kubectl logs -l app=consumer --all-containers=true -n kafka
