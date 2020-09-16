@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pi
+spec:
+  completions: 1
+  ttlSecondsAfterFinished: 10
+  template:
+    spec:
+      containers:
+      - name: kafka-job
+        image: strimzi/hello-world-producer:latest
+        env:
+          - name: BOOTSTRAP_SERVERS
+            value: my-cluster-test-kafka-bootstrap:9092
+          - name: TOPIC
+            value: request-topic
+          - name: DELAY_MS
+            value: "1000"
+          - name: LOG_LEVEL
+            value: "INFO"
+          - name: MESSAGE_COUNT
+            value: "10"
+          - name: PRODUCER_ACKS
+            value: "all"
+          - name: ADDITIONAL_CONFIG
+            value: |
+              retries=0
+      restartPolicy: Never
+  backoffLimit: 0

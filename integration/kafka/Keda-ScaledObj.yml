@@ -1,0 +1,18 @@
+apiVersion: keda.k8s.io/v1alpha1
+kind: ScaledObject
+metadata:
+  name: kafka-scaledobject
+  namespace: kafka
+  labels:
+    keda: kafka
+spec:
+  scaleTargetRef:
+    deploymentName: keda-deployment
+  pollingInterval: 30
+  triggers:
+  - type: kafka
+    metadata:
+      bootstrapServers: my-cluster-test-kafka-bootstrap:9092
+      consumerGroup: bridge-quickstart-consumer-group
+      topic: request-topic
+
