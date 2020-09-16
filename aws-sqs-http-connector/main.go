@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"io/ioutil"
 	"log"
 	"net/url"
@@ -12,9 +11,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/fission/keda-connectors/awsutil"
 	"github.com/fission/keda-connectors/common"
 )
 
@@ -164,30 +163,8 @@ func (conn *awsSQSConnector) deleteMessage(id string, queueURL string) {
 	conn.logger.Info("message deleted")
 }
 
-func getAwsConfig() (*aws.Config, error) {
-	if os.Getenv("AWS_REGION") == "" {
-		return nil, errors.New("aws region required")
-	}
-	config := &aws.Config{
-		Region: aws.String(os.Getenv("AWS_REGION")),
-	}
-	if os.Getenv("AWS_ENDPOINT") != "" {
-		endpoint := os.Getenv("AWS_ENDPOINT")
-		config.Endpoint = &endpoint
-		return config, nil
-	}
-	if os.Getenv("AWS_ACCESS_KEY") != "" && os.Getenv("AWS_SECRET_KEY") != "" {
-		config.Credentials = credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS_KEY"), os.Getenv("AWS_SECRET_KEY"), "")
-		return config, nil
-	}
-	if os.Getenv("AWS_CRED_PATH") != "" && os.Getenv("AWS_CRED_PROFILE") != "" {
-		config.Credentials = credentials.NewSharedCredentials(os.Getenv("AWS_CRED_PATH"), os.Getenv("AWS_CRED_PROFILE"))
-		return config, nil
-	}
-	return nil, errors.New("no aws configuration specified")
-}
-
 func main() {
+
 	logger, err := zap.NewProduction()
 	if err != nil {
 		log.Fatalf("can't initialize zap logger: %v", err)
@@ -196,7 +173,7 @@ func main() {
 
 	connectordata, err := common.ParseConnectorMetadata()
 
-	config, err := getAwsConfig()
+	config, err := awsutil.GetAwsConfig()
 	if err != nil {
 		logger.Error("failed to fetch aws config", zap.Error(err))
 		return
