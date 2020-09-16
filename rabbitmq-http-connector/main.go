@@ -36,11 +36,11 @@ func (conn rabbitMQConnector) consumeMessage() {
 	}
 
 	headers := http.Header{
-		"Topic":        {conn.connectordata.Topic},
-		"RespTopic":    {conn.connectordata.ResponseTopic},
-		"ErrorTopic":   {conn.connectordata.ErrorTopic},
-		"Content-Type": {conn.connectordata.ContentType},
-		"Source-Name":  {conn.connectordata.SourceName},
+		"KEDA-Topic":          {conn.connectordata.Topic},
+		"KEDA-Response-Topic": {conn.connectordata.ResponseTopic},
+		"KEDA-Error-Topic":    {conn.connectordata.ErrorTopic},
+		"Content-Type":        {conn.connectordata.ContentType},
+		"KEDA-Source-Name":    {conn.connectordata.SourceName},
 	}
 
 	forever := make(chan bool)

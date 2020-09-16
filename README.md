@@ -10,6 +10,7 @@ These connectors are used in [Fission](http://github.com/fission/fission) projec
 
 |Connectot Name | Description |
 |---|---|
+|[AWS SQS HTTP Connector](./aws-sqs-http-connector/README.md)|Reads message from AWS SQS and posts to a HTTP endpoint.|
 |[Kafka HTTP Connector](./kafka-http-connector/README.md)| Consumes messages from Kafka topics and posts the message to an HTTP endpoint.|
 |[RabbitMQ HTTP Connector](./rabbitmq-http-connector/README.md)|Reads message from RabbitMQ and posts to a HTTP endpoint. Currently only the AMQP protocol is supported for consuming RabbitMQ messages.|
 
@@ -21,7 +22,7 @@ The job of the connector is to read messages from the topic, invoke a HTTP endpo
 
 ### Following are steps required to write a connector:
 
-1. [Message Queue Trigger Spec](https://github.com/fission/fission/blob/master/pkg/mqtrigger/scalermanager.go#L163) fields are exposed as environment variables while creating deployment which will be utilized while creating consumer, producer, and during function invocation. Parse all required parameters required by the connector. 
+1. [Message Queue Trigger Spec](https://github.com/fission/fission/blob/master/pkg/mqtrigger/scalermanager.go#L163) fields are exposed as environment variables while creating deployment which will be utilized while creating consumer, producer, and during function invocation. Parse all required parameters required by the connector.
 
 2. Create a Consumer for the queue.
 
@@ -33,9 +34,9 @@ The job of the connector is to read messages from the topic, invoke a HTTP endpo
 
 ```
 {
-   "X-Fission-MQTrigger-Topic": Topic,
-   "X-Fission-MQTrigger-RespTopic": ResponseTopic,
-   "X-Fission-MQTrigger-ErrorTopic": ErrorTopic,
+   "KEDA-Topic": Topic,
+   "KEDA-Response-Topic": ResponseTopic,
+   "KEDA-Error-Topic": ErrorTopic,
    "Content-Type": ContentType
 }
 ```
@@ -48,4 +49,4 @@ The job of the connector is to read messages from the topic, invoke a HTTP endpo
 
 9. The final step would be to write a dockerfile to create docker image of the code.
 
-Refer to [Kafka HTTP Connector](./kafka-http-connector/README.md) or [RabbitMQ HTTP Connector](./rabbitmq-http-connector/README.md) for sample  implementations.
+Refer to [Kafka HTTP Connector](./kafka-http-connector/README.md) or [RabbitMQ HTTP Connector](./rabbitmq-http-connector/README.md) for sample implementations.
