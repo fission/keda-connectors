@@ -17,7 +17,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/fission/keda-connectors/common"
 
-	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 )
 
@@ -292,9 +291,6 @@ func getAwsConfig() (*aws.Config, error) {
 }
 
 func main() {
-	//TODO: need to remove this
-	err := godotenv.Load()
-
 	logger, err := zap.NewProduction()
 	if err != nil {
 		log.Fatalf("can't initialize zap logger: %v", err)
