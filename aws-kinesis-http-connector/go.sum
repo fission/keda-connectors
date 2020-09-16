@@ -5,7 +5,6 @@ github.com/aws/aws-sdk-go v1.34.24/go.mod h1:5zCpMtNQVjRREroY7sYe8lOMRSxkhG6MZve
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/fission/keda-connectors v0.0.0-20200915102844-c68eb4e4d582 h1:SSTIy+ry0M4M8aQUXam9it1XZj0F3uwN8BpUI6DekIk=
 github.com/fission/keda-connectors/common v0.0.0-20200915102844-c68eb4e4d582 h1:dBEd5TkrxnImIE+rXJG+vymYX2ZqtbRfOAu+ak929cA=
 github.com/fission/keda-connectors/common v0.0.0-20200915102844-c68eb4e4d582/go.mod h1:WGr9mV3DArFdiSCg6PKXaeQ5XPNzZY4aWAj/oL63+qo=
 github.com/go-sql-driver/mysql v1.5.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
