@@ -44,19 +44,3 @@ spec:
             secretKeyRef:
               name: rabbitmq-publisher
               key: RABBIT_PASSWORD
-#---
-#apiVersion: v1
-#kind: Service
-#metadata:
-#  name: rabbitmq-publisher
-#  labels:
-#    app: rabbitmq-publisher
-#spec:
-#  type: LoadBalancer
-#  selector:
-#    app: rabbitmq-publisher
-#  ports:
-#    - protocol: TCP
-#      name: http
-#      port: 8000
-#      targetPort: 8000

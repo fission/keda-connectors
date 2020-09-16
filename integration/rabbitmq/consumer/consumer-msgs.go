@@ -52,7 +52,7 @@ func main() {
 //		panic("could not open RabbitMQ channel:" + err.Error())
 //	}
 	// We consume data from the queue named Test using the channel we created in go.
-	msgs, err := ch.Consume("response-consumer", "", false, false, false, false, nil)
+	msgs, err := ch.Consume("response-subscriber", "", false, false, false, false, nil)
 
 	if err != nil {
 		panic("error consuming the queue: " + err.Error())
