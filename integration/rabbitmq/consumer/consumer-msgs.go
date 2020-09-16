@@ -29,28 +29,6 @@ func main() {
 
      defer ch.Close()
 
-// Get the connection string from the environment variable
-//	url := os.Getenv("AMQP_URL")
-//
-//	//If it doesnt exist, use the default connection string
-//	if url == "" {
-//		url = "amqp://guest:guest@localhost:5672"
-//	}
-//
-//	// Connect to the rabbitMQ instance
-//	connection, err := amqp.Dial(url)
-//
-//	if err != nil {
-//		panic("could not establish connection with RabbitMQ:" + err.Error())
-//	}
-//
-	// Create a channel from the connection. We'll use channels to access the data in the queue rather than the
-	// connection itself
-//	channel, err := conn.Channel()
-
-//	if err != nil {
-//		panic("could not open RabbitMQ channel:" + err.Error())
-//	}
 	// We consume data from the queue named Test using the channel we created in go.
 	msgs, err := ch.Consume("response-subscriber", "", false, false, false, false, nil)
 
@@ -64,7 +42,4 @@ func main() {
 		fmt.Println(string(msg.Body))
 		msg.Ack(false)
 	}
-
-	// We close the connection after the operation has completed.
-	//defer conn.Close()
 }
