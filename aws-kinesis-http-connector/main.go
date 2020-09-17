@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -12,7 +11,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/fission/keda-connectors/common"
@@ -265,31 +263,6 @@ func (conn *awsKinesisConnector) errorHandler(r *record, errMsg string) {
 	}
 }
 
-func getAwsConfig() (*aws.Config, error) {
-	if os.Getenv("AWS_REGION") == "" {
-		return nil, errors.New("aws region required")
-	}
-	config := &aws.Config{
-		Region: aws.String(os.Getenv("AWS_REGION")),
-	}
-	if os.Getenv("AWS_ENDPOINT") != "" {
-		endpoint := os.Getenv("AWS_ENDPOINT")
-		config.Endpoint = &endpoint
-		return config, nil
-	}
-	if os.Getenv("AWS_ACCESS_KEY_ID") != "" && os.Getenv("AWS_SECRET_ACCESS_KEY") != "" {
-		config.Credentials = credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS_KEY_ID"),
-			os.Getenv("AWS_SECRET_ACCESS_KEY"), "")
-		return config, nil
-	}
-	if os.Getenv("AWS_CRED_PATH") != "" && os.Getenv("AWS_CRED_PROFILE") != "" {
-		config.Credentials = credentials.NewSharedCredentials(os.Getenv("AWS_CRED_PATH"),
-			os.Getenv("AWS_CRED_PROFILE"))
-		return config, nil
-	}
-	return nil, errors.New("no aws configuration specified")
-}
-
 func main() {
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -300,7 +273,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config, err := getAwsConfig()
+	config, err := common.getAwsConfig()
 	if err != nil {
 		logger.Error("failed to fetch aws config", zap.Error(err))
 		return
