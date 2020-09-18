@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: rabbitmq-config
+  namespace: rabbits
 data:
   enabled_plugins: |
     [rabbitmq_federation,rabbitmq_management,rabbitmq_peer_discovery_k8s].

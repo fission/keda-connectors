@@ -4,16 +4,16 @@ metadata:
   name: keda-deployment
   namespace: rabbits
   labels:
-    keda: kafka
+    keda: rabbitmq
 spec:
   replicas: 1
   selector:
     matchLabels:
-      keda: rabbit
+      keda: rabbitmq
   template:
     metadata:
       labels:
-        keda: rabbit
+        keda: rabbitmq
     spec:
       containers:
       - name: keda-rabbit-connector

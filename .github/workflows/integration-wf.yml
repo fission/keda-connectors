@@ -1,5 +1,4 @@
-name: Integration Test Suite WorkFlow
-
+name: Integration Test WF
 on: 
   push:
     branches:
@@ -8,19 +7,28 @@ on:
     types: [ labeled ]
     branches:
       - master
+env:
+  KIND_URL: https://kind.sigs.k8s.io/dl
+  KIND_VER: v0.8.1
+  KIND_ENV: kind-linux-amd64
+
 jobs:
-  integration-test:
-    if: ${{ github.event.label.name == 'kafka' }}
+  Kafka-Test:
+    if: ${{ github.event.label.name == 'kafka' }} || ${{ github.event.label.name == 'KAFKA' }} || ${{ github.event.label.name == 'Kafka' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the current repo
         uses: actions/checkout@v1
-      - name: Install Tool
+      - name: Install Kind Cluster
         run: |
-          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.8.1/kind-linux-amd64
+          curl -Lo ./kind $KIND_URL/$KIND_VER/$KIND_ENV      
           chmod +x ./kind
           sudo mv ./kind /usr/bin/
-      - name: Run Kind Cluster
+        env:
+          KIND_URL: https://kind.sigs.k8s.io/dl
+          KIND_VER: v0.8.1
+          KIND_ENV: kind-linux-amd64
+      - name: Install KEDA using HELM 
         run: |
           cd integration/
           ./registry.sh
@@ -50,9 +58,10 @@ jobs:
           curl -L http://strimzi.io/install/latest | sed 's/namespace: .*/namespace: kafka/' | kubectl apply -f - -n kafka
           sleep 10s
           kubectl apply -f kafka-cluster.yaml
-          echo "Kafka Cluster is getting up, will take some time to spin the components..."
+          echo "Kafka Cluster is getting up."
           kubectl wait -f kafka-cluster.yaml --for=condition=ready --timeout=-1s -n kafka
           sleep 2m
+          kubectl get pods -n kafka
           kubectl wait pod -l app.kubernetes.io/name=zookeeper --for=condition=ready --timeout=-1s -n kafka
       - name: Create Kafka topics
         run: |
@@ -67,21 +76,100 @@ jobs:
           kubectl wait pod -l app=http --for=condition=ready --timeout=-1s -n kafka
       - name: Deploy Keda Connector and Keda ScaledObject
         run: |
-          cd integration/kafka/kubernetes/
+          cd integration/kafka/kubernetes/ 
           kubectl apply -f keda-deployment.yml
-          kubectl wait pod -l keda=kafka --for=condition=ready --timeout=-1s -n kafka
+          kubectl get pods -n kafka
+          docker images
+          sleep 15s
+          kubectl get pods -n kafka
+          kubectl wait pod -l keda=kafka --for=condition=ready --timeout=30s -n kafka
           kubectl apply -f Keda-ScaledObj.yml 
       - name: Produce messages Using Producer
         run: |
           cd integration/kafka/kubernetes/
-          kubectl apply -f kafka-produer.yaml -n kafka
-          kubectl wait -f kafka-produer.yaml --for=condition=complete --timeout=-1s -n kafka
+          kubectl apply -f job.yaml -n kafka
+          kubectl wait -f job.yaml --for=condition=complete --timeout=-1s -n kafka
+          kubectl delete job pi -n kafka
       - name: Collect Consumer Messages
         run: |
+          kubectl get pods -n kafka
           cd integration/kafka/consumer/
           kubectl apply -f consumer-deployment.yaml
           kubectl wait pod -l app=consumer --for=condition=ready --timeout=-1s -n kafka
           kubectl logs -l app=consumer --all-containers=true -n kafka
-      - name: Delete Kind Cluster
+  Rabbit-Test:
+    if: ${{ github.event.label.name == 'rabbitmq' }} || ${{ github.event.label.name == 'Rabbitmq' }}${{ github.event.label.name == 'RABBITMQ' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the current repo
+        uses: actions/checkout@v1
+      - name: Install Kind Cluster
         run: |
-          kind delete clusters kind-kind-registry-svc
+          curl -Lo ./kind $KIND_URL/$KIND_VER/$KIND_ENV
+          chmod +x ./kind
+          sudo mv ./kind /usr/bin/
+        env:
+          KIND_URL: https://kind.sigs.k8s.io/dl
+          KIND_VER: v0.8.1
+          KIND_ENV: kind-linux-amd64
+      - name: Install KEDA using HELM
+        run: |
+          cd integration/
+          ./registry.sh
+          helm repo add kedacore https://kedacore.github.io/charts
+          helm repo update
+          kubectl create namespace keda
+          helm install keda kedacore/keda --namespace keda
+      - name: Create Docker Image for HTTP server
+        run: |
+          cd integration/server/
+          docker build -t localhost:5000/http-server:latest .
+          docker push localhost:5000/http-server:latest
+      - name: Create Docker Image for KEDA Connector
+        run: |
+          cd rabbitmq-http-connector/
+          docker build -t localhost:5000/rabbit-keda:latest .
+          docker push localhost:5000/rabbit-keda:latest
+      - name: Create Docker Image for Publisher
+        run: |
+          cd integration/rabbitmq/publisher/
+          docker build -t localhost:5000/rabbit-publisher:latest .
+          docker push localhost:5000/rabbit-publisher:latest
+      - name: Create Docker Image for Consumer
+        run: |
+          cd integration/rabbitmq/consumer/
+          docker build -t localhost:5000/rabbit-consumer:latest .
+          docker push localhost:5000/rabbit-consumer:latest
+      - name: Deploy Rabbitmq Deployment files
+        run: |
+          cd integration/rabbitmq/kubernetes/
+          kubectl create ns rabbits
+          kubectl apply -n rabbits -f rabbit-rbac.yaml
+          kubectl apply -n rabbits -f rabbit-configmap.yaml
+          kubectl apply -n rabbits -f rabbit-secret.yaml
+          kubectl apply -n rabbits -f rabbit-statefulset.yaml
+          bash rabbitmq-cluster-instances.sh 
+      - name: Bring up HTTP Server
+        run: |
+          cd integration/server/
+          kubectl apply -f server.yaml -n rabbits
+          kubectl wait pod -l app=http --for=condition=ready --timeout=-1s -n rabbits
+      - name: Publish messages in a queue
+        run: |
+          cd integration/rabbitmq/publisher/
+          kubectl apply -f deployment.yaml
+          kubectl apply -f publisher-job.yaml
+      - name: Bring up the consumer queue and Listen for incoming messages
+        run: |
+          cd integration/rabbitmq/consumer/
+          kubectl apply -f consumer-deployment.yaml
+      - name: Deploy Keda Connector and Keda ScaledObject
+        run: |
+          cd integration/rabbitmq/kubernetes/
+          kubectl apply -f keda-deployment.yml
+          kubectl wait pod -l keda=rabbitmq --for=condition=ready --timeout=-1s -n rabbits
+          kubectl apply -f Keda-ScaledObj.yml
+      - name: Get consumed messages from queue
+        run: |
+          sleep 10s
+          kubectl logs  -n rabbits deployment.apps/rabbitmq-consumer

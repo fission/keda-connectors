@@ -27,10 +27,18 @@ func main() {
 	log.Fatalf("%s: %s", "Failed to open a channel", err)
 	}
 
-     defer ch.Close()
+	q, err := ch.QueueDeclare(
+        "response-subscriber", // name
+	true,   // durable
+	false,   // delete when unused
+	false,   // exclusive
+	false,   // no-wait
+        nil,     // arguments
+        )
+      defer ch.Close()
 
 	// We consume data from the queue named Test using the channel we created in go.
-	msgs, err := ch.Consume("response-subscriber", "", false, false, false, false, nil)
+	msgs, err := ch.Consume(q.Name, "", false, false, false, false, nil)
 
 	if err != nil {
 		panic("error consuming the queue: " + err.Error())
