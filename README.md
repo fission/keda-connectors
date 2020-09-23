@@ -17,3 +17,7 @@ The deployment that Keda scales can be a custom program you write to do somethin
 # Contributing
 
 If you want to contribute please checkout the [contributing guide](contributing.md)
+
+# Resources
+
+* A example of kafka-http-connector being used with Fission and Keda is explained here. Though thers is context of Fission in blog, the connector is used same generic connector:  https://blog.fission.io/posts/event-driven-scaling-fission-function-using-keda/ 
