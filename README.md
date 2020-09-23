@@ -16,7 +16,7 @@ The deployment that Keda scales can be a custom program you write to do somethin
 
 # Contributing
 
-If you want to contribute please checkout the [contributing guide](contributing.md)
+If you want to contribute please checkout the [contributing guide](CONTRIBUTING.md)
 
 # Resources
 
