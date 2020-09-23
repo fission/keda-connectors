@@ -22,7 +22,7 @@ The job of the connector is to read messages from the queue, call an HTTP endpoi
 
 2) Through AWS aws key and secret
 - `AWS_ACCESS_KEY_ID`: aws access key of your account.
-- `AWS_SECRET_ACCESS_KEY`: aws secret key got from your account.  
+- `AWS_SECRET_ACCESS_KEY`: aws secret key from your account.  
 
 3) Through AWS credentials
 - `AWS_CRED_PATH`: Path where aws credentials are present, ex ~/.aws/credentials.
