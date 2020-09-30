@@ -1,0 +1,29 @@
+name: "Create cluster using KinD"
+on: [pull_request, push]
+
+jobs:
+  login:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: engineerd/setup-kind@v0.4.0
+      - name: Testing
+        run: |
+          kubectl cluster-info
+          kubectl get pods -n kube-system
+          echo "current-context:" $(kubectl config current-context)
+          echo "environment-kubeconfig:" ${KUBECONFIG}
+          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 && chmod 700 get_helm.sh && ./get_helm.sh
+          helm repo add kedacore https://kedacore.github.io/charts && helm repo update
+          kubectl create namespace keda && helm install keda kedacore/keda --namespace keda
+          cd aws-sqs-http-connector && docker build -t aws-sqs-connector:0.0.1 . && kind load docker-image aws-sqs-connector:0.0.1
+          cd workflow/kubernetes && docker build -t aws-sqs-test-connector:latest . && kind load docker-image aws-sqs-test-connector:latest
+          cd ../server &&  docker build -t http-server:latest . && kind load docker-image http-server:latest && kubectl apply -f server.yaml       
+          cd ../kubernetes && kubectl apply -f keda-deployment.yml && kubectl apply -f keda-scaledObj.yml && kubectl apply -f localstack.yaml
+          cd ../tests && docker build -t test-queue:latest . && kind load docker-image test-queue:latest
+          kubectl apply -f test.yaml
+          a=0; while [[ $(kubectl get pods -l app=queue -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" && $a -lt 30 ]]; do a=`expr $a + 1` && echo "waiting for pod" && sleep 1; done
+          kubectl get pods
+          kubectl describe pod -l app=queue
+          if [ "$a" -eq "30" ]; then exit 1; fi;
+          kubectl logs -l app=queue
