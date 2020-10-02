@@ -1,0 +1,32 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: publisher-job
+  namespace: rabbits
+spec:
+  completions: 1
+  ttlSecondsAfterFinished: 10
+  template:
+    spec:
+      containers:
+      - name: rabbit-publish
+        image: localhost:5000/rabbit-publisher:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: RABBIT_HOST
+          value: "rabbitmq-0.rabbitmq.rabbits.svc.cluster.local"
+        - name: RABBIT_PORT
+          value: "5672"
+        - name: RABBIT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq-publisher
+              key: RABBIT_USERNAME
+        - name: RABBIT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq-publisher
+              key: RABBIT_PASSWORD
+      restartPolicy: Never
+

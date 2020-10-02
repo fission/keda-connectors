@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keda-deployment
+  namespace: rabbits
+  labels:
+    keda: rabbitmq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      keda: rabbitmq
+  template:
+    metadata:
+      labels:
+        keda: rabbitmq
+    spec:
+      containers:
+      - name: keda-rabbit-connector
+        image: localhost:5000/rabbit-keda:latest
+        env:
+          - name: TOPIC
+            value: publisher
+          - name: HTTP_ENDPOINT
+            value: http://http-service:8080/post
+          - name: ERROR_TOPIC
+            value: error-subscriber
+          - name: RESPONSE_TOPIC
+            value: response-subscriber
+          - name: CONTENT_TYPE
+            value: application/json
+          - name: MAX_RETRIES
+            value: "3"
+          - name: HOST
+            value: amqp://guest:guest@rabbitmq-0.rabbitmq.rabbits.svc.cluster.local:5672/
