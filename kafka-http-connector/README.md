@@ -2,7 +2,7 @@
 
 Kafka KEDA connector image can be used in the Kubernetes deployment as scaleTargetRef in scaledObject of [Apache Kafka scaler](https://keda.sh/docs/1.5/scalers/apache-kafka/).
 
-The job of the connector is to read messages from the topic, call an HTTP endpoint with the body of the message, and write response or error in the respective topics. Following enviornment variables are used by connector image as configuration to connect and authenticate with Apache Kafka cluster which should be defined in the Kubernetes deployment manifest.
+The job of the connector is to read messages from the topic, call an HTTP endpoint with the body of the message, and write response or error in the respective topics. Following environment variables are used by connector image as configuration to connect and authenticate with Apache Kafka cluster which should be defined in the Kubernetes deployment manifest.
 
 - `TOPIC`: topic from which messages are read.
 - `HTTP_ENDPOINT`: http endpoint to post request.

@@ -18,9 +18,9 @@ The job of the connector is to read messages from the queue, call an HTTP endpoi
 - `AWS_REGION`: Region is mandatory for any aws connection.
   
 1) Through AWS endpoint  
-- `AWS_ENDPOINT` : SQS endpoint on which it is running, for local it can be http://localhost:4576.  
+- `AWS_ENDPOINT`: SQS endpoint on which it is running, for local it can be http://localhost:4576.  
 
-2) Through AWS aws key and secret
+2) Through AWS key and secret
 - `AWS_ACCESS_KEY`: aws access key of your account.
 - `AWS_SECRET_KEY`: aws secret key got from your account.  
 
