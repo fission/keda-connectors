@@ -102,17 +102,17 @@ headers := http.Header{
 
 * If the HTTP call succeeds with HTTP 200 then read the response body and use that to call responseHandler. This logic is specific to the even source in this case the RabbitMQ.
 
-#### HandleHTTPRequest
+#### Handle HTTP-Request
 
-The HandleHTTPRequest takes message and rest of information to make a HTTP call to HTTPEndpoint in ConnectorMetadata. This method is from common package, and we only use it.
+The Handle HTTP-Request takes message and rest of information to make a HTTP call to HTTPEndpoint in ConnectorMetadata. This method is from common package, and we only use it.
 
 #### errorHandler
 
-If there is an error from the HTTPEndpoint then we send the message and error details to the ErrorTopic from ConnectorMetadata with appropriate logging.
+If there is an error from the HTTP Endpoint then we send the message and error details to the ErrorTopic from ConnectorMetadata with appropriate logging.
 
 #### responseHandler
 
-If the request to HTTPEndpoint succeeded then the ResponseTopic of ConnectorMetadata will be used to drop a success message.
+If the request to HTTP Endpoint succeeded then the ResponseTopic of ConnectorMetadata will be used to drop a success message.
 
 #### Dockerfile and plumbing
 
