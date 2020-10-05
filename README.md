@@ -20,4 +20,4 @@ If you want to contribute please checkout the [contributing guide](CONTRIBUTING.
 
 # Resources
 
-* An example of kafka-http-connector being used with Fission and Keda is explained here. Though theirs is context of Fission in blog, the connector used is same generic connector:  https://blog.fission.io/posts/event-driven-scaling-fission-function-using-keda/ 
+* An example of kafka-http-connector being used with Fission and Keda is explained here. Though there is context of Fission in blog, the connector used is same generic connector:  https://blog.fission.io/posts/event-driven-scaling-fission-function-using-keda/ 
