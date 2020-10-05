@@ -21,18 +21,18 @@ There are many areas we can use contributions - ranging from code, documentation
 
 ## Get Help.
 
-Do reach out on Slack or Twitter and we are happy to help.
+Do reach out on Slack or Twitter, and we are happy to help.
 
  * Drop by the [slack channel](http://slack.fission.io).
  * Say hi on [twitter](https://twitter.com/fissionio).
 
 ## Contributing - building & deploying
 
-The job of the connector is to read messages from the event source, do some action, and write response or error in the respective queues/topics. The event source could be a queue/topic for a message queue and could be a table/row in case of a database. It will be best explained in context of one sample implementation and you can extrapolate that when writing a new connector.
+The job of the connector is to read messages from the event source, do some action, and write response or error in the respective queues/topics. The event source could be a queue/topic for a message queue and could be a table/row in case of a database. It will be best explained in context of one sample implementation, and you can extrapolate that when writing a new connector.
 
 ### rabbitmq-http-connector explained
 
-The rabbitmq-http-connector reads message from RabbitMQ (Source) and calls a HTTP endpoint where it send the message content as a HTTP request body. The code is rather simple as we will see in following sections. There are things which are applicable to every connector and there are things which are specific to that connector only, they will be called out as we explain.
+The rabbitmq-http-connector reads message from RabbitMQ (Source) and calls an HTTP endpoint where it sends the message content as an HTTP request body. The code is rather simple as we will see in following sections. There are things which are applicable to every connector and there are things which are specific to that connector only, they will be called out as we explain.
 
 #### The main()
 
@@ -45,7 +45,7 @@ connectordata, err := common.ParseConnectorMetadata()
 
 ```
 
-The fields in connector metadata are basic metadata which is not specific to a event source:
+The fields in connector metadata are basic metadata which is not specific to an event source:
 
 ```
 // ConnectorMetadata contains common fields used by connectors
@@ -60,7 +60,7 @@ type ConnectorMetadata struct {
 }
 ```
 
-The second set of env variables we are getting is specific to RabbitMQ and how to connect to it and we populate the rabbitMQConnector struct with earlier created metadata and host on which to connect to for RabbitMQ and other things such as consumer channel and producer channel. For finding out which attributes are applicable for an event source, it is best to refer to Keda documentation for that event source. For example for [RabbitMQ the Keda documentation is here](https://keda.sh/docs/2.0/scalers/rabbitmq-queue/)
+The second set of env variables we are getting is specific to RabbitMQ and how to connect to it, and we populate the rabbitMQConnector struct with earlier created metadata and host on which to connect to for RabbitMQ and other things such as consumer channel and producer channel. For finding out which attributes are applicable for an event source, it is best to refer to Keda documentation for that event source. For example for [RabbitMQ the Keda documentation is here](https://keda.sh/docs/2.0/scalers/rabbitmq-queue/)
 
 ```
 type rabbitMQConnector struct {
@@ -72,7 +72,7 @@ type rabbitMQConnector struct {
 }
 ```
 
-At end of main we are calling consume messages method, let's dive into that.
+At the end of main we are calling consume messages method, let's dive into that.
 
 ```
 conn.consumeMessage()
@@ -98,13 +98,13 @@ headers := http.Header{
 
 * Form rest of HTTP request amd call HTTPHandler method from common package. This method is common for all connectors with destination as HTTPEndPoint.
 
-* If the HTTP call errors with a HTTP code other than 200 then , call errorHandler. This logic is specific to the even source in this case the RabbitMQ.
+* If the HTTP call errors with an HTTP code other than 200 then , call errorHandler. This logic is specific to the even source in this case the RabbitMQ.
 
 * If the HTTP call succeeds with HTTP 200 then read the response body and use that to call responseHandler. This logic is specific to the even source in this case the RabbitMQ.
 
 #### HandleHTTPRequest
 
-The HandleHTTPRequest takes message and rest of information to make a HTTP call to HTTPEndpoint in ConnectorMetadata. This method is from common package, and we only use it.
+The HandleHTTPRequest takes a message and rest of information to make an HTTP call to HTTPEndpoint in ConnectorMetadata. This method is from common package, and we only use it.
 
 #### errorHandler
 

@@ -204,7 +204,7 @@ func main() {
 
 	sess, err := session.NewSession(config)
 	if err != nil {
-		logger.Error("not able create session using aws configuation", zap.Error(err))
+		logger.Error("not able create session using aws configuration", zap.Error(err))
 		return
 	}
 	svc := sqs.New(sess)
