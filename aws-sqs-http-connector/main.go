@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/url"
+	"strings"
 
 	"net/http"
 	"os"
@@ -176,8 +177,8 @@ func getAwsConfig() (*aws.Config, error) {
 		config.Endpoint = &endpoint
 		return config, nil
 	}
-	if os.Getenv("AWS_ACCESS_KEY") != "" && os.Getenv("AWS_SECRET_KEY") != "" {
-		config.Credentials = credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS_KEY"), os.Getenv("AWS_SECRET_KEY"), "")
+	if os.Getenv("AWS_ACCESS_KEY_ID") != "" && os.Getenv("AWS_SECRET_ACCESS_KEY") != "" {
+		config.Credentials = credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), "")
 		return config, nil
 	}
 	if os.Getenv("AWS_CRED_PATH") != "" && os.Getenv("AWS_CRED_PROFILE") != "" {
@@ -209,7 +210,7 @@ func main() {
 	}
 	svc := sqs.New(sess)
 
-	sqsURL, err := url.Parse(os.Getenv("AWS_SQS_URL"))
+	sqsURL, err := url.Parse(strings.TrimSuffix(os.Getenv("QUEUE_URL"), os.Getenv("TOPIC")))
 	if err != nil {
 		logger.Error("not able parse aws sqs url", zap.Error(err))
 		return
