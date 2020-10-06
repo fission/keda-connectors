@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: localstack
-  namespace: sqs
 spec:
   selector:
     matchLabels:

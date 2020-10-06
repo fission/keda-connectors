@@ -2,7 +2,7 @@ name: Integration Test WF
 on: 
   push:
     branches:
-      - sqsWorkflow
+      - master
   pull_request:
     branches:
       - master
@@ -188,5 +188,5 @@ jobs:
       - name: Get SQS consumed messages from queue
         if: steps.filter.outputs.sqschanges == 'true'        
         run: |
-          sleep 10s
-          kubectl logs -f -l app=queue
+          sleep 30s
+          kubectl logs -l app=queue
