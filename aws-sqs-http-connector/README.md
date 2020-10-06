@@ -11,18 +11,18 @@ The job of the connector is to read messages from the queue, call an HTTP endpoi
 - `SOURCE_NAME`: Optional. Name of the Source. Default is "KEDAConnector".
 - `MAX_RETRIES`: Maximum number of times an http endpoint will be retried upon failure.
 - `CONTENT_TYPE`: Content type used while creating post request.
-- `AWS_SQS_URL`: AWS SQS full URL with account id, for example http://localhost:4576/000000000000/.  
+- `QUEUE_URL`: AWS SQS full URL with account id, for example  https://sqs.ap-south-1.amazonaws.com/account_id/QueueName.  
 
 
 #### Ways to connect to AWS
 - `AWS_REGION`: Region is mandatory for any aws connection.
   
 1) Through AWS endpoint  
-- `AWS_ENDPOINT` : SQS endpoint on which it is running, for local it can be http://localhost:4576.  
+- `AWS_ENDPOINT`: SQS endpoint on which it is running, for local it can be https://sqs.ap-south-1.amazonaws.com.  
 
 2) Through AWS aws key and secret
 - `AWS_ACCESS_KEY_ID`: aws access key of your account.
-- `AWS_SECRET_ACCESS_KEY`: aws secret key got from your account.  
+- `AWS_SECRET_ACCESS_KEY`: aws secret key from your account.  
 
 3) Through AWS credentials
 - `AWS_CRED_PATH`: Path where aws credentials are present, ex ~/.aws/credentials.

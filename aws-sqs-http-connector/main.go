@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/url"
+	"strings"
 
 	"net/http"
 	"os"
@@ -179,12 +180,12 @@ func main() {
 
 	sess, err := session.NewSession(config)
 	if err != nil {
-		logger.Error("not able create session using aws configuation", zap.Error(err))
+		logger.Error("not able create session using aws configuration", zap.Error(err))
 		return
 	}
 	svc := sqs.New(sess)
 
-	sqsURL, err := url.Parse(os.Getenv("AWS_SQS_URL"))
+	sqsURL, err := url.Parse(strings.TrimSuffix(os.Getenv("QUEUE_URL"), os.Getenv("TOPIC")))
 	if err != nil {
 		logger.Error("not able parse aws sqs url", zap.Error(err))
 		return
