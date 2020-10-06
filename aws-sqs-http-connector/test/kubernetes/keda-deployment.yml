@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: keda-deployment
+  namespace: sqs
   labels:
     keda: sqs
 spec:
@@ -21,7 +22,7 @@ spec:
           - name: TOPIC
             value: my_queue
           - name: HTTP_ENDPOINT
-            value: http://http-service:8080/post
+            value: http://http-service.default.svc.cluster.local:8080/post
           - name: ERROR_TOPIC
             value: errorTopic
           - name: RESPONSE_TOPIC

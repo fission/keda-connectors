@@ -2,9 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: localstack
+  namespace: sqs
 spec:
-  # using the selector, we will expose the running deployments
-  # this is how Kubernetes knows, that a given service belongs to a deployment
   selector:
     matchLabels:
       app: localstack
@@ -33,8 +32,6 @@ kind: Service
 metadata:
   name: localstack
 spec:
-  # selector tells Kubernetes what Deployment this Service
-  # belongs to
   selector:
     app: localstack
   ports:

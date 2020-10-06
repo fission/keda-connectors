@@ -22,7 +22,7 @@ spec:
           - name: TOPIC
             value: request-topic
           - name: HTTP_ENDPOINT
-            value: http://http-service:8080/post
+            value: http://http-service.default.svc.cluster.local:8080/post
           - name: ERROR_TOPIC
             value: error-topic
           - name: RESPONSE_TOPIC
