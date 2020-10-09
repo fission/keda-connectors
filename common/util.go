@@ -7,6 +7,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws/credentials"
+
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
@@ -91,4 +94,30 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 		return nil, fmt.Errorf("request returned failure: %v. http_endpoint: %v, source: %v", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
 	}
 	return resp, nil
+}
+
+//GetAwsConfig get's the configuration required to connect to aws
+func GetAwsConfig() (*aws.Config, error) {
+	if os.Getenv("AWS_REGION") == "" {
+		return nil, errors.New("aws region required")
+	}
+	config := &aws.Config{
+		Region: aws.String(os.Getenv("AWS_REGION")),
+	}
+	if os.Getenv("AWS_ENDPOINT") != "" {
+		endpoint := os.Getenv("AWS_ENDPOINT")
+		config.Endpoint = &endpoint
+		return config, nil
+	}
+	if os.Getenv("AWS_ACCESS_KEY_ID") != "" && os.Getenv("AWS_SECRET_ACCESS_KEY") != "" {
+		config.Credentials = credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS_KEY_ID"),
+			os.Getenv("AWS_SECRET_ACCESS_KEY"), "")
+		return config, nil
+	}
+	if os.Getenv("AWS_CRED_PATH") != "" && os.Getenv("AWS_CRED_PROFILE") != "" {
+		config.Credentials = credentials.NewSharedCredentials(os.Getenv("AWS_CRED_PATH"),
+			os.Getenv("AWS_CRED_PROFILE"))
+		return config, nil
+	}
+	return nil, errors.New("no aws configuration specified")
 }
