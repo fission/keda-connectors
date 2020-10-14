@@ -53,21 +53,22 @@ func ParseConnectorMetadata() (ConnectorMetadata, error) {
 
 // HandleHTTPRequest sends message and headers data to HTTP endpoint using POST method and returns response on success or error in case of failure
 func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetadata, logger *zap.Logger) (*http.Response, error) {
-	// Create request
-	req, err := http.NewRequest("POST", data.HTTPEndpoint, strings.NewReader(message))
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create HTTP request to invoke function. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
-	}
-
-	// Add headers
-	for key, vals := range headers {
-		for _, val := range vals {
-			req.Header.Add(key, val)
-		}
-	}
 
 	var resp *http.Response
 	for attempt := 0; attempt <= data.MaxRetries; attempt++ {
+		// Create request
+		req, err := http.NewRequest("POST", data.HTTPEndpoint, strings.NewReader(message))
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to create HTTP request to invoke function. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
+		}
+
+		// Add headers
+		for key, vals := range headers {
+			for _, val := range vals {
+				req.Header.Add(key, val)
+			}
+		}
+
 		// Make the request
 		resp, err = http.DefaultClient.Do(req)
 		if err != nil {
@@ -80,9 +81,9 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 		if resp == nil {
 			continue
 		}
-		if err == nil && resp.StatusCode == http.StatusOK {
+		if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			// Success, quit retrying
-			break
+			return resp, nil
 		}
 	}
 
@@ -90,7 +91,7 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 		return nil, fmt.Errorf("every function invocation retry failed; final retry gave empty response. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode < 200 && resp.StatusCode > 300 {
 		return nil, fmt.Errorf("request returned failure: %v. http_endpoint: %v, source: %v", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
 	}
 	return resp, nil
