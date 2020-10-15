@@ -24,6 +24,5 @@ func main() {
 	// sc.QueueSubscribe("response", "grp1", func(m *stan.Msg) {
 	// 	log.Printf("[Received] %+v", m)
 	// }, stan.DurableName("due"), stan.DeliverAllAvailable())
-	//wait
 	select {}
 }

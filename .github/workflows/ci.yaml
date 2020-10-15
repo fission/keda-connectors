@@ -118,7 +118,7 @@ jobs:
       - name: Run fission for kafka connector
         if: steps.filter.outputs.kafkachanges == 'true'  
         run: |
-          fission mqt create --name kafkatest --function consumer --mqtype kafka --mqtkind keda --topic request-topic --resptopic response-topic --errortopic error-topic --maxretries 3 --metadata bootstrapServers=my-cluster-kafka-brokers.my-kafka-project.svc:9092 --metadata consumerGroup=my-group --metadata topic=request-topic  --cooldownperiod=30 --pollinginterval=5`
+          fission mqt create --name kafkatest --function helloworld --mqtype kafka --mqtkind keda --topic request-topic --resptopic response-topic --errortopic error-topic --maxretries 3 --metadata bootstrapServers=my-cluster-kafka-brokers.my-kafka-project.svc:9092 --metadata consumerGroup=my-group --metadata topic=request-topic  --cooldownperiod=30 --pollinginterval=5
       - name: Produce Kafka messages Using Producer
         if: steps.filter.outputs.kafkachanges == 'true'      
         run: |
