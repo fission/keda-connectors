@@ -1,4 +1,4 @@
-module github.com/keda-connectors/nats-http-connector
+module github.com/keda-connectors/nats-streaming-http-connector
 
 go 1.13
 

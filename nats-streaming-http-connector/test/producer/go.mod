@@ -1,4 +1,4 @@
-module github.com/keda-connectors/nats-http-connector/test/producer
+module github.com/keda-connectors/nats-streaming-http-connector/test/producer
 
 go 1.13
 
