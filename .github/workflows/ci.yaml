@@ -180,7 +180,7 @@ jobs:
       - name: Run fission for rabbitmq connector
         if: steps.filter.outputs.kafkachanges == 'true'  
         run: |
-          fission mqt create  --name rabbittest --function consumer --mqtype rabbitmq --topic request --resptopic response --mqtkind keda --errortopic error --maxretries 3 --metadata queueName=request  --cooldownperiod=30 --pollinginterval=5 --secret rabbitmq-consumer
+          fission mqt create  --name rabbittest --function helloworld --mqtype rabbitmq --topic request --resptopic response --mqtkind keda --errortopic error --maxretries 3 --metadata queueName=request  --cooldownperiod=30 --pollinginterval=5 --secret rabbitmq-consumer
       - name: Get Rabbitmq consumed messages from queue
         if: steps.filter.outputs.rabbitmqchanges == 'true'        
         run: |
