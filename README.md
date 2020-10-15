@@ -14,7 +14,7 @@ The deployment that Keda scales can be a custom program you write to do somethin
 |[Kafka HTTP Connector](./kafka-http-connector/README.md)| Consumes messages from Kafka topics and posts the message to an HTTP endpoint.|
 |[RabbitMQ HTTP Connector](./rabbitmq-http-connector/README.md)|Reads message from RabbitMQ and posts to a HTTP endpoint. Currently only the AMQP protocol is supported for consuming RabbitMQ messages.|
 |[AWS Kinesis Stream HTTP Connector](./aws-kinesis-http-connector/README.md)|Reads message from  Amazon Kinesis Data Streams and posts to a HTTP endpoint.|
-|[Nats Streaming HTTP Connector](./nats-streaming-http-connector/README.md)|Subscribes to a Nats streaming queue with subject and queue group and posts to a HTTP endpoint.|
+|[Nats Streaming HTTP Connector](./nats-streaming-http-connector/README.md)|Subscribes to a Nats streaming queue with subject and queue group to read the messages and posts to a HTTP endpoint.|
 
 # Contributing
 
