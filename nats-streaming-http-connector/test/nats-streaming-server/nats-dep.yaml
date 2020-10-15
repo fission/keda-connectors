@@ -1,0 +1,42 @@
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: nats-streaming-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nats
+  replicas: 1 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: nats
+    spec:
+      containers:
+      - name: nats
+        image: nats-streaming:latest
+        args: ["-m", "8222"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats
+  labels:
+    app: nats
+spec:
+  selector:
+    app: nats
+  clusterIP: None
+  ports:
+  - name: client
+    port: 4222
+  - name: cluster
+    port: 6222
+  - name: monitor
+    port: 8222
+  - name: metrics
+    port: 7777
+  - name: leafnodes
+    port: 7422
+  - name: gateways
+    port: 7522        
