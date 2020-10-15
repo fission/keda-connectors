@@ -62,19 +62,21 @@ jobs:
       - name: Create Nats Streaming server    
         run: |
           cd nats-streaming-http-connector/test/nats-streaming-server
-          kubectl apply -f nats-dep.yaml          
-      - name: Run fission    
-        run: |
-          fission mqt create --name natstest --function helloworld --mqtype stan --topic hello --resptopic response --mqtkind keda --errortopic error --maxretries 3 --metadata subject=hello --metadata queueGroup=grp1 --metadata durableName=due --metadata natsServerMonitoringEndpoint=nats.default.svc.cluster.local:8222 --metadata clusterId=test-cluster --metadata clientId=stan-sub --metadata natsServer=nats://nats:4222
+          kubectl apply -f nats-dep.yaml    
       - name: Publish messages in nats server    
         run: |
           cd nats-streaming-http-connector/test/producer
           docker build -t localhost:5000/producer:latest .
           docker push localhost:5000/producer:latest
-          kubectl create deployment nats-pub --image=localhost:5000/producer:latest
+          kubectl create deployment nats-pub --image=localhost:5000/producer:latest                
+      - name: Run fission    
+        run: |
+          fission mqt create --name natstest --function helloworld --mqtype stan --topic hello --resptopic response --mqtkind keda --errortopic error --maxretries 3 --metadata subject=hello --metadata queueGroup=grp1 --metadata durableName=due --metadata natsServerMonitoringEndpoint=nats.default.svc.cluster.local:8222 --metadata clusterId=test-cluster --metadata clientId=stan-sub --metadata natsServer=nats://nats:4222
       - name: Validate and test    
         run: |
           sleep 10
-          kubectl get pods 
+          kubectl get pods
+          kubectl get deployment
+          kubectl get ScaledObject
           kubectl wait pod -l app=natstest --for=condition=ready --timeout=30s 
           kubectl logs -l app=natstest --all-containers=true          
