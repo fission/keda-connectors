@@ -71,9 +71,8 @@ jobs:
         if: steps.filter.outputs.natschanges == 'true'     
         run: |
           cd nats-streaming-http-connector/test/producer
-          docker build -t localhost:5000/producer:latest .
-          docker push localhost:5000/producer:latest
-          kubectl create deployment nats-pub --image=localhost:5000/producer:latest                
+          fission fn create --name producer --env go --src main.go --entrypoint Handler
+          fission fn test --name producer            
       - name: Run fission for nats connector
         if: steps.filter.outputs.natschanges == 'true'  
         run: |
@@ -81,6 +80,6 @@ jobs:
       - name: Validate and test nats connector
         if: steps.filter.outputs.natschanges == 'true'     
         run: |
-          sleep 22
+          sleep 25
           kubectl wait pod -l app=natstest --for=condition=ready --timeout=30s 
           kubectl logs -l app=natstest --all-containers=true          
