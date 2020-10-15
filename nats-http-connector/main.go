@@ -43,7 +43,9 @@ func (conn natsConnector) consumeMessage() {
 				conn.logger.Info(err.Error())
 				conn.errorHandler(err)
 			} else {
-				if success := conn.responseHandler(string(body)); success {
+				if success := conn.responseHandler(body); success {
+					conn.logger.Info("Done processing message",
+						zap.String("messsage", string(body)))
 				}
 			}
 		}
@@ -69,11 +71,11 @@ func (conn natsConnector) errorHandler(err error) {
 	}
 }
 
-func (conn natsConnector) responseHandler(response string) bool {
+func (conn natsConnector) responseHandler(response []byte) bool {
 
 	if len(conn.connectordata.ResponseTopic) > 0 {
 
-		publishErr := conn.stanConnection.Publish(conn.connectordata.ResponseTopic, []byte(response))
+		publishErr := conn.stanConnection.Publish(conn.connectordata.ResponseTopic, response)
 
 		if publishErr != nil {
 			conn.logger.Error("failed to publish response body from http request to topic",
