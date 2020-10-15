@@ -26,7 +26,9 @@ jobs:
             rabbitmqchanges: 
               - 'rabbitmq-http-connector/**'   
             sqschanges:  
-              - 'aws-sqs-http-connector/**'                                
+              - 'aws-sqs-http-connector/**' 
+            natschanges:
+              - 'nats-streaming-http-connector/**'                                             
       - name: Install Kind Cluster
         run: |
           curl -Lo ./kind $KIND_URL/$KIND_VER/$KIND_ENV      
@@ -49,34 +51,36 @@ jobs:
           helm install fission-app . --set mqt_keda.enabled=true --set mqt_keda.connector_images.nats_steaming.image=localhost:5000/nats-steaming --set mqt_keda.connector_images.nats_steaming.tag=latest -n fission
           curl -Lo fission https://github.com/fission/fission/releases/download/1.11.1/fission-cli-linux \
           && chmod +x fission && sudo mv fission /usr/local/bin/     
-      - name: Create Docker Image for HTTP server  
+      - name: Create HTTP server using fission  
         run: |
-          cd nats-streaming-http-connector/test/fission-function
+          cd test/http-endpoint
           fission environment create --name go --image fission/go-env-1.12:1.11.1 --builder fission/go-builder-1.12:1.11.1
           fission fn create --name helloworld --env go --src hello.go --entrypoint Handler
-      - name: Create Docker Image for Nats Streaming KEDA Connector    
+      - name: Create Docker Image for Nats Streaming KEDA Connector
+        if: steps.filter.outputs.natschanges == 'true'  
         run: |
           cd nats-streaming-http-connector/
           docker build -t localhost:5000/nats-steaming:latest .
           docker push localhost:5000/nats-steaming:latest
-      - name: Create Nats Streaming server    
+      - name: Create Nats Streaming server
+        if: steps.filter.outputs.natschanges == 'true'  
         run: |
           cd nats-streaming-http-connector/test/nats-streaming-server
           kubectl apply -f nats-dep.yaml    
-      - name: Publish messages in nats server    
+      - name: Publish messages to nats server
+        if: steps.filter.outputs.natschanges == 'true'     
         run: |
           cd nats-streaming-http-connector/test/producer
           docker build -t localhost:5000/producer:latest .
           docker push localhost:5000/producer:latest
           kubectl create deployment nats-pub --image=localhost:5000/producer:latest                
-      - name: Run fission    
+      - name: Run fission for nats connector
+        if: steps.filter.outputs.natschanges == 'true'  
         run: |
           fission mqt create --name natstest --function helloworld --mqtype stan --topic hello --resptopic response --mqtkind keda --errortopic error --maxretries 3 --metadata subject=hello --metadata queueGroup=grp1 --metadata durableName=due --metadata natsServerMonitoringEndpoint=nats.default.svc.cluster.local:8222 --metadata clusterId=test-cluster --metadata clientId=stan-sub --metadata natsServer=nats://nats:4222
-      - name: Validate and test    
+      - name: Validate and test nats connector
+        if: steps.filter.outputs.natschanges == 'true'     
         run: |
-          sleep 20
-          kubectl get pods
-          kubectl describe deployment natstest
-          kubectl get ScaledObject
+          sleep 22
           kubectl wait pod -l app=natstest --for=condition=ready --timeout=30s 
           kubectl logs -l app=natstest --all-containers=true          
