@@ -74,9 +74,9 @@ jobs:
           fission mqt create --name natstest --function helloworld --mqtype stan --topic hello --resptopic response --mqtkind keda --errortopic error --maxretries 3 --metadata subject=hello --metadata queueGroup=grp1 --metadata durableName=due --metadata natsServerMonitoringEndpoint=nats.default.svc.cluster.local:8222 --metadata clusterId=test-cluster --metadata clientId=stan-sub --metadata natsServer=nats://nats:4222
       - name: Validate and test    
         run: |
-          sleep 10
+          sleep 20
           kubectl get pods
-          kubectl get deployment
+          kubectl describe deployment natstest
           kubectl get ScaledObject
           kubectl wait pod -l app=natstest --for=condition=ready --timeout=30s 
           kubectl logs -l app=natstest --all-containers=true          
