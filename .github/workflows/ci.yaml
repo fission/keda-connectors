@@ -81,9 +81,12 @@ jobs:
       - name: Validate and test nats connector
         if: steps.filter.outputs.natschanges == 'true'
         run: |
-          sleep 25
+          sleep 21
+          kubectl get pods
+          kubectl describe deployment natstest
+          kubectl get ScaledObject
           kubectl wait pod -l app=natstest --for=condition=ready --timeout=30s 
-          kubectl logs -l app=natstest --all-containers=true          
+          kubectl logs -l app=natstest --all-containers=true        
       - name: Create Docker Image for Kafka KEDA Connector
         if: steps.filter.outputs.kafkachanges == 'true'      
         run: |
