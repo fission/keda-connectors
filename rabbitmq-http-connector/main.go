@@ -69,7 +69,7 @@ func (conn rabbitMQConnector) consumeMessage() {
 			}(d)
 		}
 	}()
-
+	//args
 	conn.logger.Info("RabbitMQ consumer up and running!...")
 	<-forever
 }

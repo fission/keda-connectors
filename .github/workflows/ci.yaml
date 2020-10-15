@@ -71,8 +71,9 @@ jobs:
         if: steps.filter.outputs.natschanges == 'true'     
         run: |
           cd nats-streaming-http-connector/test/producer
-          fission fn create --name producer --env go --src main.go --entrypoint Handler
-          fission fn test --name producer            
+          docker build -t localhost:5000/producer:latest .
+          docker push localhost:5000/producer:latest
+          kubectl create deployment nats-pub --image=localhost:5000/producer:latest            
       - name: Run fission for nats connector
         if: steps.filter.outputs.natschanges == 'true'  
         run: |
@@ -134,3 +135,51 @@ jobs:
           kubectl apply -f consumer-deployment.yaml
           kubectl wait pod -l app=consumer --for=condition=ready --timeout=-1s -n kafka
           kubectl logs -l app=consumer --all-containers=true -n kafka
+      - name: Create Docker Image for Rabbitmq KEDA Connector
+        if: steps.filter.outputs.rabbitmqchanges == 'true'        
+        run: |
+          cd rabbitmq-http-connector/
+          docker build -t localhost:5000/rabbit-keda:latest .
+          docker push localhost:5000/rabbit-keda:latest
+      - name: Create Rabbitmq Docker Image for Publisher
+        if: steps.filter.outputs.rabbitmqchanges == 'true'        
+        run: |
+          cd rabbitmq-http-connector/test/publisher/
+          docker build -t localhost:5000/rabbit-publisher:latest .
+          docker push localhost:5000/rabbit-publisher:latest
+      - name: Create Rabbitmq Docker Image for Consumer
+        if: steps.filter.outputs.rabbitmqchanges == 'true'        
+        run: |
+          cd rabbitmq-http-connector/test/consumer/
+          docker build -t localhost:5000/rabbit-consumer:latest .
+          docker push localhost:5000/rabbit-consumer:latest
+      - name: Deploy Rabbitmq Deployment files
+        if: steps.filter.outputs.rabbitmqchanges == 'true'        
+        run: |
+          cd rabbitmq-http-connector/test/kubernetes/
+          kubectl create ns rabbits
+          kubectl apply -n rabbits -f rabbit-rbac.yaml
+          kubectl apply -n rabbits -f rabbit-configmap.yaml
+          kubectl apply -n rabbits -f rabbit-secret.yaml
+          kubectl apply -n rabbits -f rabbit-statefulset.yaml
+          bash rabbitmq-cluster-instances.sh 
+      - name: Publish Rabbitmq messages in a queue
+        if: steps.filter.outputs.rabbitmqchanges == 'true'        
+        run: |
+          cd rabbitmq-http-connector/test/publisher/
+          kubectl apply -f deployment.yaml
+          kubectl apply -f publisher-job.yaml
+      - name: Bring up the Rabbitmq consumer queue and Listen for incoming messages
+        if: steps.filter.outputs.rabbitmqchanges == 'true'        
+        run: |
+          cd rabbitmq-http-connector/test/consumer/
+          kubectl apply -f consumer-deployment.yaml          
+      - name: Run fission for rabbitmq connector
+        if: steps.filter.outputs.kafkachanges == 'true'  
+        run: |
+          fission mqt create  --name rabbittest --function consumer --mqtype rabbitmq --topic request --resptopic response --mqtkind keda --errortopic error --maxretries 3 --metadata queueName=request  --cooldownperiod=30 --pollinginterval=5 --secret rabbitmq-consumer
+      - name: Get Rabbitmq consumed messages from queue
+        if: steps.filter.outputs.rabbitmqchanges == 'true'        
+        run: |
+          sleep 10s
+          kubectl logs  -n rabbits deployment.apps/rabbitmq-consumer          
