@@ -1,51 +1,25 @@
 # Keda Connectors
 
-[Keda](https://keda.sh/) is a Kubernetes-based Event Driven Autoscaler which enables you to scale containers for processing events based on number of events.
+[Keda](https://keda.sh/) is a Kubernetes-based Event Driven Autoscaler which enables you to scale containers for processing events based on number of events. Keda watches the source of events such as a Message Queue with "Scalers". Once the events start coming in, Keda scales a deployment (Worker POD) from 0 to 1 and uses HPA to scale from 1 to N. Once messages are consumed, Keda can also scale back the deployments to 1 and 0.
 
-Keda Connectors provide you readymade generic images to process events for standard tasks. For example if you are going to read messages from RabbitMQ and then call an HTTP endpoint then you can use [RabbitMQ HTTP Connector](./rabbitmq-http-connector/README.md). You just have to create a standard deployment manifest with all env variables needed for the pod.
+The deployment that Keda scales can be a custom program you write to do something with message or if your goal is to do something generic as calling a HTTP Server with message content as request body then you can use Keda Connectors. Keda Connectors provide you readymade generic images to process events for standard tasks and send them to a standard set of destinations. For example if you are going to read messages from RabbitMQ and then call an HTTP endpoint then you can use [RabbitMQ HTTP Connector](./rabbitmq-http-connector/README.md). You just have to create a standard deployment manifest with all env variables needed for that deployment/pod. Following diagram shows a sample of Keda with kafka-http-connector and rabbitmq-http-connector.
 
-These connectors are used in [Fission](http://github.com/fission/fission) project for integrating events to call functions via MQTrigger CRD.
+![Keda Connectors](keda-connectors.png)
 
-# Connector List
+# Current Connector List
 
 |Connectot Name | Description |
 |---|---|
+|[AWS SQS HTTP Connector](./aws-sqs-http-connector/README.md)|Reads message from AWS SQS and posts to a HTTP endpoint.|
 |[Kafka HTTP Connector](./kafka-http-connector/README.md)| Consumes messages from Kafka topics and posts the message to an HTTP endpoint.|
 |[RabbitMQ HTTP Connector](./rabbitmq-http-connector/README.md)|Reads message from RabbitMQ and posts to a HTTP endpoint. Currently only the AMQP protocol is supported for consuming RabbitMQ messages.|
+|[AWS Kinesis Stream HTTP Connector](./aws-kinesis-http-connector/README.md)|Reads message from  Amazon Kinesis Data Streams and posts to a HTTP endpoint.|
+|[Nats Streaming HTTP Connector](./nats-streaming-http-connector/README.md)|Subscribes to a Nats streaming queue with subject and queue group to read the messages and posts to a HTTP endpoint.|
 
 # Contributing
 
-## Connector Development Guide
+If you want to contribute please checkout the [contributing guide](CONTRIBUTING.md)
 
-The job of the connector is to read messages from the topic, invoke a HTTP endpoint, and write response or error in the respective queues/topics.
+# Resources
 
-### Following are steps required to write a connector:
-
-1. [Message Queue Trigger Spec](https://github.com/fission/fission/blob/master/pkg/mqtrigger/scalermanager.go#L163) fields are exposed as environment variables while creating deployment which will be utilized while creating consumer, producer, and during function invocation. Parse all required parameters required by the connector.
-
-2. Create a Consumer for the queue.
-
-3. Create a Producer for the queue.
-
-4. Read messages from the queue using the consumer.
-
-5. Create a POST request with the following headers using values specified during message queue trigger creation and headers from the consumed message.
-
-```
-{
-   "KEDA-Topic": Topic,
-   "KEDA-Response-Topic": ResponseTopic,
-   "KEDA-Error-Topic": ErrorTopic,
-   "Content-Type": ContentType
-}
-```
-
-6. Invoke HTTP endpoint per consumed message in a retry loop using max retries parameter specified. You can reuse the already available method for calling HTTP endpoints: https://github.com/fission/keda-connectors/blob/master/common/util.go#L52
-
-7. Write the response in response queue, if the reponse topic is specified.
-
-8. If applicable then write error in error queue, if error topic is specified.
-
-9. The final step would be to write a dockerfile to create docker image of the code.
-
-Refer to [Kafka HTTP Connector](./kafka-http-connector/README.md) or [RabbitMQ HTTP Connector](./rabbitmq-http-connector/README.md) for sample implementations.
+* An example of kafka-http-connector being used with Fission and Keda is explained here. Though there is context of Fission in blog, the connector used is same generic connector:  https://blog.fission.io/posts/event-driven-scaling-fission-function-using-keda/ 

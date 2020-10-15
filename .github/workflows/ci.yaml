@@ -1,0 +1,80 @@
+name: Integration Test WF
+on: 
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+env:
+  KIND_URL: https://kind.sigs.k8s.io/dl
+  KIND_VER: v0.8.1
+  KIND_ENV: kind-linux-amd64
+
+jobs:
+  Connector-Tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the current repo
+        uses: actions/checkout@v1
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            kafkachanges: 
+              - 'kafka-http-connector/**'
+            rabbitmqchanges: 
+              - 'rabbitmq-http-connector/**'   
+            sqschanges:  
+              - 'aws-sqs-http-connector/**'                                
+      - name: Install Kind Cluster
+        run: |
+          curl -Lo ./kind $KIND_URL/$KIND_VER/$KIND_ENV      
+          chmod +x ./kind
+          sudo mv ./kind /usr/bin/
+      - name: Install KEDA using HELM    
+        run: |
+          cd test/
+          ./registry.sh
+          helm repo add kedacore https://kedacore.github.io/charts
+          helm repo update
+          kubectl create namespace keda
+          helm install keda kedacore/keda --namespace keda
+      - name: Install Fission and it's cli
+        run: |
+          kubectl create namespace fission
+          git clone --single-branch --branch natsConn https://github.com/girishg4t/fission.git
+          cd fission/charts/fission-core 
+          helm dependency update .
+          helm install fission-app . --set mqt_keda.enabled=true --set mqt_keda.connector_images.nats_steaming.image=localhost:5000/nats-steaming --set mqt_keda.connector_images.nats_steaming.tag=latest -n fission
+          curl -Lo fission https://github.com/fission/fission/releases/download/1.11.1/fission-cli-linux \
+          && chmod +x fission && sudo mv fission /usr/local/bin/     
+      - name: Create Docker Image for HTTP server  
+        run: |
+          cd nats-streaming-http-connector/test/fission-function
+          fission environment create --name go --image fission/go-env-1.12:1.11.1 --builder fission/go-builder-1.12:1.11.1
+          fission fn create --name helloworld --env go --src hello.go --entrypoint Handler
+      - name: Create Docker Image for Nats Streaming KEDA Connector    
+        run: |
+          cd nats-streaming-http-connector/
+          docker build -t localhost:5000/nats-steaming:latest .
+          docker push localhost:5000/nats-steaming:latest
+      - name: Create Nats Streaming server    
+        run: |
+          cd nats-streaming-http-connector/test/nats-streaming-server
+          kubectl apply -f nats-dep.yaml          
+      - name: Run fission    
+        run: |
+          fission mqt create --name natstest --function helloworld --mqtype stan --topic hello --resptopic response --mqtkind keda --errortopic error --maxretries 3 --metadata subject=hello --metadata queueGroup=grp1 --metadata durableName=due --metadata natsServerMonitoringEndpoint=nats.default.svc.cluster.local:8222 --metadata clusterId=test-cluster --metadata clientId=stan-sub --metadata natsServer=nats://nats:4222
+      - name: Publish messages in nats server    
+        run: |
+          cd nats-streaming-http-connector/test/producer
+          docker build -t localhost:5000/producer:latest .
+          docker push localhost:5000/producer:latest
+          kubectl create deployment nats-pub --image=localhost:5000/producer:latest
+      - name: Validate and test    
+        run: |
+          sleep 10
+          kubectl get pods 
+          kubectl wait pod -l app=natstest --for=condition=ready --timeout=30s 
+          kubectl logs -l app=natstest --all-containers=true          
