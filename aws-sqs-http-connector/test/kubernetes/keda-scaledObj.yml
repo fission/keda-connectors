@@ -1,0 +1,20 @@
+apiVersion: keda.k8s.io/v1alpha1
+kind: ScaledObject
+metadata:
+  name: sqs-scaledobject
+  labels:
+    keda: sqs
+spec:
+  scaleTargetRef:
+    deploymentName: sqs-deployment
+  pollingInterval: 30
+  triggers:
+  - type: aws-sqs-queue
+    metadata:
+      # Required: queueURL
+      queueURL: http://localstack:31000/queue/my_queue
+      queueLength: "5"  # Default: "5"
+      # Required: awsRegion
+      awsRegion: "us-east-1" 
+      identityOwner: operator # Optional. Default: pod
+

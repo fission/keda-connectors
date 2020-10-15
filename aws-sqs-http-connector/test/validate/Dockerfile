@@ -1,3 +1,4 @@
+
 FROM golang:1.12-alpine as builder
 
 RUN apk add bash ca-certificates git gcc g++ libc-dev
@@ -17,5 +18,15 @@ RUN go build -a -o /go/bin/main
 FROM alpine:3.12 as base
 RUN apk add --update ca-certificates
 COPY --from=builder /go/bin/main /
+RUN apk add --no-cache \
+        python3 \
+        py3-pip \
+    && pip3 install --upgrade pip \
+    && pip3 install \
+        awscli \
+    && rm -rf /var/cache/apk/*
+COPY ./aws_setup.sh .
+RUN chmod +x ./aws_setup.sh 
+RUN sh ./aws_setup.sh  
 
 ENTRYPOINT ["/main"]

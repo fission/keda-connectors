@@ -1,0 +1,17 @@
+apiVersion: keda.k8s.io/v1alpha1
+kind: ScaledObject
+metadata:
+  name: rabbitmq-scaledobject
+  namespace: rabbits
+  labels:
+    keda: rabbit
+spec:
+  scaleTargetRef:
+    deploymentName: keda-deployment
+  pollingInterval: 30
+  triggers:
+  - type: rabbitmq
+    metadata:
+      host: amqp://guest:guest@rabbitmq-0.rabbitmq.rabbits.svc.cluster.local:5672/vhost
+      queueName: publisher
+

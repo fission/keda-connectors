@@ -78,8 +78,59 @@ jobs:
         run: |
           fission mqt create --name natstest --function helloworld --mqtype stan --topic hello --resptopic response --mqtkind keda --errortopic error --maxretries 3 --metadata subject=hello --metadata queueGroup=grp1 --metadata durableName=due --metadata natsServerMonitoringEndpoint=nats.default.svc.cluster.local:8222 --metadata clusterId=test-cluster --metadata clientId=stan-sub --metadata natsServer=nats://nats:4222
       - name: Validate and test nats connector
-        if: steps.filter.outputs.natschanges == 'true'     
+        if: steps.filter.outputs.natschanges == 'true'
         run: |
           sleep 25
           kubectl wait pod -l app=natstest --for=condition=ready --timeout=30s 
           kubectl logs -l app=natstest --all-containers=true          
+      - name: Create Docker Image for Kafka KEDA Connector
+        if: steps.filter.outputs.kafkachanges == 'true'      
+        run: |
+          cd kafka-http-connector/
+          docker build -t localhost:5000/kafka-connector:latest .
+          docker push localhost:5000/kafka-connector:latest
+      - name: Create Kafka Docker Image for Consumer
+        if: steps.filter.outputs.kafkachanges == 'true'      
+        run: |
+          cd kafka-http-connector/test/consumer/
+          docker build -t localhost:5000/consumer:latest .
+          docker push localhost:5000/consumer:latest
+      - name: Deploy Kafka cluster
+        if: steps.filter.outputs.kafkachanges == 'true'      
+        run: |
+          cd kafka-http-connector/test/kubernetes/
+          kubectl create namespace kafka
+          curl -L http://strimzi.io/install/latest | sed 's/namespace: .*/namespace: kafka/' | kubectl apply -f - -n kafka
+          sleep 10s
+          kubectl apply -f kafka-cluster.yaml
+          echo "Kafka Cluster is getting up."
+          kubectl wait -f kafka-cluster.yaml --for=condition=ready --timeout=-1s -n kafka
+          sleep 2m
+          kubectl get pods -n kafka
+          kubectl wait pod -l app.kubernetes.io/name=zookeeper --for=condition=ready --timeout=-1s -n kafka
+      - name: Create Kafka topics
+        if: steps.filter.outputs.kafkachanges == 'true'      
+        run: |
+          cd kafka-http-connector/test/kubernetes/
+          kubectl apply -f kafka-req-topic.yaml
+          kubectl apply -f kafka-err-topic.yaml
+          kubectl apply -f kafka-res-topic.yaml
+      - name: Run fission for kafka connector
+        if: steps.filter.outputs.kafkachanges == 'true'  
+        run: |
+          fission mqt create --name kafkatest --function consumer --mqtype kafka --mqtkind keda --topic request-topic --resptopic response-topic --errortopic error-topic --maxretries 3 --metadata bootstrapServers=my-cluster-kafka-brokers.my-kafka-project.svc:9092 --metadata consumerGroup=my-group --metadata topic=request-topic  --cooldownperiod=30 --pollinginterval=5`
+      - name: Produce Kafka messages Using Producer
+        if: steps.filter.outputs.kafkachanges == 'true'      
+        run: |
+          cd kafka-http-connector/test/kubernetes/
+          kubectl apply -f kafka-produer.yaml -n kafka
+          kubectl wait -f kafka-produer.yaml --for=condition=complete --timeout=-1s -n kafka
+          kubectl delete job pi -n kafka
+      - name: Collect Kafka Consumer Messages
+        if: steps.filter.outputs.kafkachanges == 'true'      
+        run: |
+          kubectl get pods -n kafka
+          cd kafka-http-connector/test/consumer/
+          kubectl apply -f consumer-deployment.yaml
+          kubectl wait pod -l app=consumer --for=condition=ready --timeout=-1s -n kafka
+          kubectl logs -l app=consumer --all-containers=true -n kafka
