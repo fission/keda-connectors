@@ -223,7 +223,8 @@ jobs:
           kubectl apply -f test.yaml
           sleep 10s
           kubectl get deployment
-          Kubectl get hpa
+          kubectl get ScaledObject
+          kubectl get hpa
           kubectl describe deployment sqstest
           kubectl wait --for=condition=available --timeout=600s deployment/sqstest 
       - name: Get SQS consumed messages from queue
