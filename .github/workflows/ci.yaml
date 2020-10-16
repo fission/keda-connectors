@@ -103,14 +103,14 @@ jobs:
         run: |
           cd kafka-http-connector/test/kubernetes/
           kubectl create namespace kafka
-          curl -L http://strimzi.io/install/latest | kubectl apply -f -
+          curl -L http://strimzi.io/install/latest | sed 's/namespace: .*/namespace: kafka/' | kubectl apply -f - -n kafka
           sleep 10s
           kubectl apply -f kafka-cluster.yaml
           echo "Kafka Cluster is getting up."
-          kubectl wait -f kafka-cluster.yaml --for=condition=ready --timeout=-1s
+          kubectl wait -f kafka-cluster.yaml --for=condition=ready --timeout=-1s -n kafka
           sleep 2m
-          kubectl get pods
-          kubectl wait pod -l app.kubernetes.io/name=zookeeper --for=condition=ready --timeout=-1s
+          kubectl get pods -n kafka
+          kubectl wait pod -l app.kubernetes.io/name=zookeeper --for=condition=ready --timeout=-1s -n kafka
       - name: Create Kafka topics
         if: steps.filter.outputs.kafkachanges == 'true'      
         run: |
@@ -121,7 +121,7 @@ jobs:
       - name: Run fission for kafka connector
         if: steps.filter.outputs.kafkachanges == 'true'  
         run: |
-          fission mqt create --name kafkatest --function helloworld --mqtype kafka  --mqtkind keda --topic request-topic --resptopic response-topic --errortopic error-topic --maxretries 3 --metadata bootstrapServers=my-cluster-kafka-brokers.my-kafka-project.svc:9092 --metadata consumerGroup=my-group --metadata topic=request-topic  --cooldownperiod=30 --pollinginterval=5
+          fission mqt create --name kafkatest --function helloworld --mqtype kafka  --mqtkind keda --topic request-topic --resptopic response-topic --errortopic error-topic --maxretries 3 --metadata bootstrapServers=my-cluster-test-kafka-bootstrap.kafka.svc:9092 --metadata consumerGroup=bridge-quickstart-consumer-group --metadata topic=request-topic  --cooldownperiod=30 --pollinginterval=5
           sleep 15s
       - name: Produce Kafka messages Using Producer
         if: steps.filter.outputs.kafkachanges == 'true'      
