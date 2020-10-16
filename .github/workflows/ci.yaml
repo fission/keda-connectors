@@ -121,7 +121,7 @@ jobs:
       - name: Run fission for kafka connector
         if: steps.filter.outputs.kafkachanges == 'true'  
         run: |
-          fission mqt create --name kafkatest --function helloworld --mqtype kafka --mqtkind keda --topic request-topic --resptopic response-topic --errortopic error-topic --maxretries 3 --metadata bootstrapServers=my-cluster-kafka-brokers.my-kafka-project.svc:9092 --metadata consumerGroup=my-group --metadata topic=request-topic  --cooldownperiod=30 --pollinginterval=5
+          fission mqt create --name kafkatest --function helloworld --mqtype kafka --fnNamespace kafka --mqtkind keda --topic request-topic --resptopic response-topic --errortopic error-topic --maxretries 3 --metadata bootstrapServers=my-cluster-kafka-brokers.my-kafka-project.svc:9092 --metadata consumerGroup=my-group --metadata topic=request-topic  --cooldownperiod=30 --pollinginterval=5
           sleep 15s
       - name: Produce Kafka messages Using Producer
         if: steps.filter.outputs.kafkachanges == 'true'      
@@ -138,6 +138,7 @@ jobs:
           kubectl apply -f consumer-deployment.yaml
           kubectl wait pod -l app=consumer --for=condition=ready --timeout=-1s -n kafka
           kubectl logs -l app=consumer --all-containers=true -n kafka
+          kubectl get pods -n kafka
       - name: Create Docker Image for Rabbitmq KEDA Connector
         if: steps.filter.outputs.rabbitmqchanges == 'true'        
         run: |
@@ -185,4 +186,37 @@ jobs:
         if: steps.filter.outputs.rabbitmqchanges == 'true'        
         run: |
           sleep 10s
-          kubectl logs  -n rabbits deployment.apps/rabbitmq-consumer          
+          kubectl logs  -n rabbits deployment.apps/rabbitmq-consumer
+      - name: Create Docker Image for SQS KEDA Connector
+        if: steps.filter.outputs.sqschanges == 'true'        
+        run: |
+          cd aws-sqs-http-connector
+          docker build -t localhost:5000/aws-sqs-connector:latest .
+          docker push localhost:5000/aws-sqs-connector:latest
+      - name: Create SQS Docker image with AWS CLI in KEDA Connetor
+        if: steps.filter.outputs.sqschanges == 'true'        
+        run: |
+          cd aws-sqs-http-connector/test/kubernetes 
+          docker build -t localhost:5000/aws-sqs-test-connector:latest .
+          docker push localhost:5000/aws-sqs-test-connector:latest
+      - name: Deploy SQS Keda Connector, Keda ScaledObject and Localstack
+        if: steps.filter.outputs.sqschanges == 'true'        
+        run: |
+          cd aws-sqs-http-connector/test/kubernetes 
+          fission mqt create  --name sqstest --function consumer --mqtype aws-sqs-queue --topic request --resptopic response --mqtkind keda --errortopic error --maxretries 3 --metadata queueURL=http://localstack:31000/queue/request --identityOwner=operator --metadata awsRegion=us-east-1 --cooldownperiod=30 --pollinginterval=5
+          kubectl apply -f localstack.yaml
+      - name: Build and Deploy SQS test queue
+        if: steps.filter.outputs.sqschanges == 'true'        
+        run: |       
+          cd aws-sqs-http-connector/test/validate
+          docker build -t localhost:5000/test-queue:latest .
+          docker push localhost:5000/test-queue:latest
+          kubectl apply -f test.yaml
+          sleep 10s
+          kubectl get pods
+          kubectl wait pod -l app=sqstest --for=condition=ready --timeout=200s
+      - name: Get SQS consumed messages from queue
+        if: steps.filter.outputs.sqschanges == 'true'        
+        run: |
+          sleep 30s
+          kubectl logs -l app=sqstest          

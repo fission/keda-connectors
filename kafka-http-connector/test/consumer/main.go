@@ -38,7 +38,7 @@ func main() {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt)
 
-	// Get signnal for finish
+	// Get signnal for finish test
 	doneCh := make(chan struct{})
 	go func() {
 		for {
