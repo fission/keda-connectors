@@ -60,8 +60,7 @@ jobs:
         run: |
           cd test/http-endpoint
           fission environment create --name go --image fission/go-env-1.12:1.11.1 --builder fission/go-builder-1.12:1.11.1
-          fission fn create --name helloworld --env go --src hello.go --entrypoint Handler --executortype newdeploy \
-          --minmemory 64 --maxmemory 128 --minscale 1 --maxscale 6  --targetcpu 50
+          fission fn create --name helloworld --env go --src hello.go --entrypoint Handler --executortype newdeploy
       - name: Create Docker Image for Nats Streaming KEDA Connector
         if: steps.filter.outputs.natschanges == 'true'  
         run: |
