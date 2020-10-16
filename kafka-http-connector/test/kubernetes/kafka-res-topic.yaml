@@ -2,7 +2,6 @@ apiVersion: kafka.strimzi.io/v1beta1
 kind: KafkaTopic
 metadata:
   name: response-topic
-  namespace: kafka
   labels:
     strimzi.io/cluster: "my-cluster-test"
 spec:
