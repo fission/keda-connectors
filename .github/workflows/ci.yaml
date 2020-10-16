@@ -223,10 +223,9 @@ jobs:
           kubectl apply -f test.yaml
           sleep 10s
           kubectl get deployment
-          Kubectl get ScaledObject
           Kubectl get hpa
           kubectl describe deployment sqstest
-          kubectl wait pod -l app=sqstest --for=condition=ready --timeout=-1s
+          kubectl wait --for=condition=available --timeout=600s deployment/sqstest 
       - name: Get SQS consumed messages from queue
         if: steps.filter.outputs.sqschanges == 'true'        
         run: |
