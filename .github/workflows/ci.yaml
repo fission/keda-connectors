@@ -221,14 +221,8 @@ jobs:
           docker build -t localhost:5000/test-queue:latest .
           docker push localhost:5000/test-queue:latest
           kubectl apply -f test.yaml
-          sleep 10s
-          kubectl get deployment
-          kubectl get ScaledObject
-          kubectl get hpa
-          kubectl describe deployment sqstest
-          kubectl wait --for=condition=available --timeout=600s deployment/sqstest 
+          kubectl wait --for=condition=ready --timeout=600s deployment/sqstest 
       - name: Get SQS consumed messages from queue
         if: steps.filter.outputs.sqschanges == 'true'        
         run: |
-          sleep 30s
-          kubectl logs -l app=sqstest --all-containers=true    
+          kubectl logs -f -l app=sqstest --all-containers=true    
