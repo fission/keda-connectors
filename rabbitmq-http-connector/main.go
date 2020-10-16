@@ -74,6 +74,7 @@ func (conn rabbitMQConnector) consumeMessage() {
 	<-forever
 }
 
+//test
 func (conn rabbitMQConnector) errorHandler(err error) {
 	if len(conn.connectordata.ErrorTopic) > 0 {
 		err = conn.producerChannel.Publish(
