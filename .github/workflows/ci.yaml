@@ -84,7 +84,12 @@ jobs:
       - name: Run fission for nats connector
         if: steps.filter.outputs.natschanges == 'true'  
         run: |
-          fission mqt create --name natstest --function helloworld --mqtype stan --topic hello --resptopic response --mqtkind keda --errortopic error --maxretries 3 --metadata subject=hello --metadata queueGroup=grp1 --metadata durableName=due --metadata natsServerMonitoringEndpoint=nats.default.svc.cluster.local:8222 --metadata clusterId=test-cluster --metadata clientId=stan-sub --metadata natsServer=nats://nats:4222
+          fission mqt create --name natstest --function helloworld --mqtype stan --topic hello \
+          --resptopic response --mqtkind keda --errortopic error --maxretries 3 --metadata subject=hello \
+          --metadata queueGroup=grp1 --metadata durableName=due \
+          --metadata natsServerMonitoringEndpoint=nats.default.svc.cluster.local:8222 \
+          --metadata clusterId=test-cluster --metadata clientId=stan-sub \
+          --metadata natsServer=nats://nats:4222
       - name: Validate and test nats connector
         if: steps.filter.outputs.natschanges == 'true'
         run: |
@@ -128,7 +133,6 @@ jobs:
         if: steps.filter.outputs.kafkachanges == 'true'  
         run: |
           fission mqt create --name kafkatest --function helloworld --mqtype kafka  --mqtkind keda --topic request-topic --resptopic response-topic --errortopic error-topic --maxretries 3 --metadata bootstrapServers=my-cluster-test-kafka-bootstrap.kafka.svc:9092 --metadata consumerGroup=bridge-quickstart-consumer-group --metadata topic=request-topic  --cooldownperiod=30 --pollinginterval=5
-          sleep 15s
       - name: Produce Kafka messages Using Producer
         if: steps.filter.outputs.kafkachanges == 'true'      
         run: |
