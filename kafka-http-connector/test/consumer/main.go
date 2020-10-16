@@ -16,7 +16,7 @@ func main() {
 	// Specify brokers address. This is default to one
 	brokers := []string{"my-cluster-test-kafka-bootstrap.kafka.svc:9092"}
 
-	// Create new consumer test
+	// Create new consumer
 	master, err := sarama.NewConsumer(brokers, config)
 	if err != nil {
 		panic(err)

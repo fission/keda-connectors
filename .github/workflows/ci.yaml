@@ -48,7 +48,12 @@ jobs:
           git clone --single-branch --branch natsConn https://github.com/girishg4t/fission.git
           cd fission/charts/fission-core 
           helm dependency update .
-          helm install fission-app . --set mqt_keda.enabled=true --set mqt_keda.connector_images.nats_steaming.image=localhost:5000/nats-steaming --set mqt_keda.connector_images.nats_steaming.tag=latest -n fission
+          helm install fission-app . --set mqt_keda.enabled=true \
+          --set mqt_keda.connector_images.nats_steaming.image=localhost:5000/nats-steaming \
+          --set mqt_keda.connector_images.nats_steaming.tag=latest \
+          --set mqt_keda.connector_images.awssqs.image=localhost:5000/aws-sqs-test-connector \
+          --set mqt_keda.connector_images.awssqs.tag=latest \
+          -n fission
           curl -Lo fission https://github.com/fission/fission/releases/download/1.11.1/fission-cli-linux \
           && chmod +x fission && sudo mv fission /usr/local/bin/     
       - name: Create HTTP server using fission  
@@ -130,15 +135,7 @@ jobs:
           kubectl apply -f kafka-produer.yaml
           kubectl wait -f kafka-produer.yaml --for=condition=complete --timeout=-1s
           kubectl delete job pi
-      - name: Collect Kafka Consumer Messages
-        if: steps.filter.outputs.kafkachanges == 'true'      
-        run: |
-          kubectl get pods
-          cd kafka-http-connector/test/consumer/
-          kubectl apply -f consumer-deployment.yaml
-          kubectl wait pod -l app=consumer --for=condition=ready --timeout=-1s
-          kubectl logs -l app=consumer --all-containers=true
-          kubectl get pods
+          kubectl logs -f -l app=kafkatest --all-containers=true
       - name: Create Docker Image for Rabbitmq KEDA Connector
         if: steps.filter.outputs.rabbitmqchanges == 'true'        
         run: |
