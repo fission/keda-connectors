@@ -208,7 +208,11 @@ jobs:
         if: steps.filter.outputs.sqschanges == 'true'        
         run: |
           cd aws-sqs-http-connector/test/kubernetes 
-          fission mqt create  --name sqstest --function consumer --mqtype aws-sqs-queue --topic request --resptopic response --mqtkind keda --errortopic error --maxretries 3 --metadata queueURL=http://localstack:31000/queue/request --identityOwner=operator --metadata awsRegion=us-east-1 --cooldownperiod=30 --pollinginterval=5
+          fission mqt create  --name sqstest --function consumer --mqtype aws-sqs-queue \
+          --topic request --resptopic response --mqtkind keda --errortopic error \
+          --maxretries 3 --metadata queueURL=http://localstack:31000/queue/request \
+          --metadata identityOwner=operator --metadata awsRegion=us-east-1 --cooldownperiod=30 \
+          --pollinginterval=5
           kubectl apply -f localstack.yaml
       - name: Build and Deploy SQS test queue
         if: steps.filter.outputs.sqschanges == 'true'        
@@ -224,4 +228,4 @@ jobs:
         if: steps.filter.outputs.sqschanges == 'true'        
         run: |
           sleep 30s
-          kubectl logs -l app=sqstest          
+          kubectl logs -l app=sqstest --all-containers=true    
