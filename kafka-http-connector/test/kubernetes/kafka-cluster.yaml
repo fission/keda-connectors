@@ -2,6 +2,7 @@ apiVersion: kafka.strimzi.io/v1beta1
 kind: Kafka
 metadata:
   name: my-cluster-test
+  namespace: kafka
 spec:
   kafka:
     replicas: 1
