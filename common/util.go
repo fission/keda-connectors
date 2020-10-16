@@ -7,6 +7,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws/credentials"
+
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
@@ -50,21 +53,22 @@ func ParseConnectorMetadata() (ConnectorMetadata, error) {
 
 // HandleHTTPRequest sends message and headers data to HTTP endpoint using POST method and returns response on success or error in case of failure
 func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetadata, logger *zap.Logger) (*http.Response, error) {
-	// Create request
-	req, err := http.NewRequest("POST", data.HTTPEndpoint, strings.NewReader(message))
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create HTTP request to invoke function. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
-	}
-
-	// Add headers
-	for key, vals := range headers {
-		for _, val := range vals {
-			req.Header.Add(key, val)
-		}
-	}
 
 	var resp *http.Response
 	for attempt := 0; attempt <= data.MaxRetries; attempt++ {
+		// Create request
+		req, err := http.NewRequest("POST", data.HTTPEndpoint, strings.NewReader(message))
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to create HTTP request to invoke function. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
+		}
+
+		// Add headers
+		for key, vals := range headers {
+			for _, val := range vals {
+				req.Header.Add(key, val)
+			}
+		}
+
 		// Make the request
 		resp, err = http.DefaultClient.Do(req)
 		if err != nil {
@@ -77,9 +81,9 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 		if resp == nil {
 			continue
 		}
-		if err == nil && resp.StatusCode == http.StatusOK {
+		if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			// Success, quit retrying
-			break
+			return resp, nil
 		}
 	}
 
@@ -87,8 +91,34 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 		return nil, fmt.Errorf("every function invocation retry failed; final retry gave empty response. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode < 200 && resp.StatusCode > 300 {
 		return nil, fmt.Errorf("request returned failure: %v. http_endpoint: %v, source: %v", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
 	}
 	return resp, nil
+}
+
+//GetAwsConfig get's the configuration required to connect to aws
+func GetAwsConfig() (*aws.Config, error) {
+	if os.Getenv("AWS_REGION") == "" {
+		return nil, errors.New("aws region required")
+	}
+	config := &aws.Config{
+		Region: aws.String(os.Getenv("AWS_REGION")),
+	}
+	if os.Getenv("AWS_ENDPOINT") != "" {
+		endpoint := os.Getenv("AWS_ENDPOINT")
+		config.Endpoint = &endpoint
+		return config, nil
+	}
+	if os.Getenv("AWS_ACCESS_KEY_ID") != "" && os.Getenv("AWS_SECRET_ACCESS_KEY") != "" {
+		config.Credentials = credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS_KEY_ID"),
+			os.Getenv("AWS_SECRET_ACCESS_KEY"), "")
+		return config, nil
+	}
+	if os.Getenv("AWS_CRED_PATH") != "" && os.Getenv("AWS_CRED_PROFILE") != "" {
+		config.Credentials = credentials.NewSharedCredentials(os.Getenv("AWS_CRED_PATH"),
+			os.Getenv("AWS_CRED_PROFILE"))
+		return config, nil
+	}
+	return nil, errors.New("no aws configuration specified")
 }

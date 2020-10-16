@@ -53,6 +53,8 @@ jobs:
           --set mqt_keda.connector_images.nats_steaming.tag=latest \
           --set mqt_keda.connector_images.awssqs.image=localhost:5000/aws-sqs-test-connector \
           --set mqt_keda.connector_images.awssqs.tag=latest \
+          --set mqt_keda.connector_images.kafka.image=localhost:5000/kafka-connector \
+          --set mqt_keda.connector_images.kafka.tag=latest \
           -n fission
           curl -Lo fission https://github.com/fission/fission/releases/download/1.11.1/fission-cli-linux \
           && chmod +x fission && sudo mv fission /usr/local/bin/     
@@ -102,12 +104,6 @@ jobs:
           cd kafka-http-connector/
           docker build -t localhost:5000/kafka-connector:latest .
           docker push localhost:5000/kafka-connector:latest
-      - name: Create Kafka Docker Image for Consumer
-        if: steps.filter.outputs.kafkachanges == 'true'      
-        run: |
-          cd kafka-http-connector/test/consumer/
-          docker build -t localhost:5000/consumer:latest .
-          docker push localhost:5000/consumer:latest
       - name: Deploy Kafka cluster
         if: steps.filter.outputs.kafkachanges == 'true'      
         run: |
@@ -131,7 +127,12 @@ jobs:
       - name: Run fission for kafka connector
         if: steps.filter.outputs.kafkachanges == 'true'  
         run: |
-          fission mqt create --name kafkatest --function helloworld --mqtype kafka  --mqtkind keda --topic request-topic --resptopic response-topic --errortopic error-topic --maxretries 3 --metadata bootstrapServers=my-cluster-test-kafka-bootstrap.kafka.svc:9092 --metadata consumerGroup=bridge-quickstart-consumer-group --metadata topic=request-topic  --cooldownperiod=30 --pollinginterval=5
+          fission mqt create --name kafkatest --function helloworld --mqtype kafka  \
+          --mqtkind keda --topic request-topic --resptopic response-topic \
+          --errortopic error-topic --maxretries 3 \
+          --metadata bootstrapServers=my-cluster-test-kafka-bootstrap.kafka.svc:9092 \
+          --metadata consumerGroup=bridge-quickstart-consumer-group --metadata topic=request-topic  \
+          --cooldownperiod=30 --pollinginterval=5
       - name: Produce Kafka messages Using Producer
         if: steps.filter.outputs.kafkachanges == 'true'      
         run: |
@@ -182,7 +183,10 @@ jobs:
       - name: Run fission for rabbitmq connector
         if: steps.filter.outputs.rabbitmqchanges == 'true'  
         run: |
-          fission mqt create  --name rabbittest --function helloworld --mqtype rabbitmq --topic request --resptopic response --mqtkind keda --errortopic error --maxretries 3 --metadata queueName=request  --cooldownperiod=30 --pollinginterval=5 --secret rabbitmq-consumer
+          fission mqt create  --name rabbittest --function helloworld --mqtype rabbitmq \
+          --topic request --resptopic response --mqtkind keda --errortopic error --maxretries 3 \
+          --metadata queueName=request  --cooldownperiod=30 --pollinginterval=5 \
+          --secret rabbitmq-consumer
       - name: Get Rabbitmq consumed messages from queue
         if: steps.filter.outputs.rabbitmqchanges == 'true'        
         run: |
