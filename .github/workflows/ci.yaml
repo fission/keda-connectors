@@ -73,7 +73,8 @@ jobs:
           cd nats-streaming-http-connector/test/producer
           docker build -t localhost:5000/producer:latest .
           docker push localhost:5000/producer:latest
-          kubectl create deployment nats-pub --image=localhost:5000/producer:latest            
+          kubectl create deployment nats-pub --image=localhost:5000/producer:latest   
+          kubectl wait pod -l app=nats-pub --for=condition=ready --timeout=30s
       - name: Run fission for nats connector
         if: steps.filter.outputs.natschanges == 'true'  
         run: |
