@@ -192,6 +192,7 @@ jobs:
       - name: Get Rabbitmq consumed messages from queue
         if: steps.filter.outputs.rabbitmqchanges == 'true'
         run: |
+          sleep 10s
           i=0; while [[ $i -lt 10 ]]; do i=`expr $i + 1` && kubectl logs -n rabbits deployment.apps/rabbitmq-consumer; sleep 5s; done          
       - name: Create Docker Image for SQS KEDA Connector
         if: steps.filter.outputs.sqschanges == 'true'        
@@ -211,7 +212,7 @@ jobs:
           cd aws-sqs-http-connector/test/kubernetes 
           fission mqt create  --name sqstest --function helloworld --mqtype aws-sqs-queue \
           --topic my_queue --resptopic responseTopic --mqtkind keda --errortopic errorTopic \
-          --maxretries 3 --metadata queueURL=http://localstack:31000/queue/request \
+          --maxretries 3 --metadata queueURL=http://localstack:31000/queue/my_queue \
           --metadata identityOwner=operator --metadata awsRegion=us-east-1 --cooldownperiod=30 \
           --pollinginterval=5
           kubectl apply -f localstack.yaml
