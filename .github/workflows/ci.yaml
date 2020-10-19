@@ -55,6 +55,8 @@ jobs:
           --set mqt_keda.connector_images.awssqs.tag=latest \
           --set mqt_keda.connector_images.kafka.image=localhost:5000/kafka-connector \
           --set mqt_keda.connector_images.kafka.tag=latest \
+          --set mqt_keda.connector_images.rabbitmq.image=localhost:5000/rabbit-keda \
+          --set mqt_keda.connector_images.rabbitmq.tag=latest \          
           -n fission
           curl -Lo fission https://github.com/fission/fission/releases/download/1.11.1/fission-cli-linux \
           && chmod +x fission && sudo mv fission /usr/local/bin/     
@@ -221,6 +223,8 @@ jobs:
           docker build -t localhost:5000/test-queue:latest .
           docker push localhost:5000/test-queue:latest
           kubectl apply -f test.yaml
+          kubectl get pods
+          kubectl logs -f -l app=sqstest --all-containers=true    
           kubectl wait --for=condition=ready --timeout=600s deployment/sqstest 
       - name: Get SQS consumed messages from queue
         if: steps.filter.outputs.sqschanges == 'true'        
