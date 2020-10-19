@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs"
 )
 
+//test
 func main() {
 	queueURL := "http://localstack:31000/queue/"
 	region := "us-east-1"
