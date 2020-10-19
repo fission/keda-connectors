@@ -190,10 +190,9 @@ jobs:
           --secret rabbitmq-consumer
           kubectl wait pod -l app=rabbitmqtest --for=condition=ready --timeout=-1s
       - name: Get Rabbitmq consumed messages from queue
-        if: steps.filter.outputs.rabbitmqchanges == 'true'        
+        if: steps.filter.outputs.rabbitmqchanges == 'true'
         run: |
-          sleep 10s
-          kubectl logs  -n rabbits deployment.apps/rabbitmq-consumer
+          i=0; while [[ $i -lt 10 ]]; do i=`expr $i + 1` && kubectl logs -n rabbits deployment.apps/rabbitmq-consumer; sleep 5s; done          
       - name: Create Docker Image for SQS KEDA Connector
         if: steps.filter.outputs.sqschanges == 'true'        
         run: |
@@ -223,6 +222,7 @@ jobs:
           docker build -t localhost:5000/test-queue:latest .
           docker push localhost:5000/test-queue:latest
           kubectl apply -f test.yaml
+          sleep 25s
           i=0; while [[ $i -lt 10 ]]; do i=`expr $i + 1` && kubectl logs -l app=queue --all-containers=true; sleep 5s; done
       - name: Get SQS consumed messages from queue
         if: steps.filter.outputs.sqschanges == 'true'        
