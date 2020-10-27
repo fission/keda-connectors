@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-message-queue
+  labels:
+    app: queue
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: queue
+  template:
+    metadata:
+      labels:
+        app: queue
+    spec:
+      containers:
+      - name: test-message
+        image: localhost:5000/test-queue:latest
+      initContainers:
+      - name: create-queue
+        image: amazon/aws-cli
+        command: ['sh', '-c', "aws configure set aws_access_key_id foo && aws configure set aws_secret_access_key bar && echo '[default]' > ~/.aws/config && echo 'region = us-east-1' >> ~/.aws/config && echo 'output = json' >> ~/.aws/config && aws --endpoint-url=http://localstack:31000 sqs create-queue --queue-name my_queue && aws --endpoint-url=http://localstack:31000 sqs create-queue --queue-name responseTopic"]     

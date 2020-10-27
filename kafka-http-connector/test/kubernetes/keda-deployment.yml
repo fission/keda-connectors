@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keda-deployment
+  namespace: kafka
+  labels:
+    keda: kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      keda: kafka
+  template:
+    metadata:
+      labels:
+        keda: kafka
+    spec:
+      containers:
+      - name: keda-kafka-connector
+        image: localhost:5000/kafka-connector:latest
+        env:
+          - name: TOPIC
+            value: request-topic
+          - name: HTTP_ENDPOINT
+            value: http://http-service.default.svc.cluster.local:8080/post
+          - name: ERROR_TOPIC
+            value: error-topic
+          - name: RESPONSE_TOPIC
+            value: response-topic
+          - name: CONTENT_TYPE
+            value: application/json
+          - name: MAX_RETRIES
+            value: "3"
+          - name: BOOTSTRAP_SERVERS
+            value: "my-cluster-test-kafka-bootstrap:9092"
+          - name: CONSUMER_GROUP
+            value: bridge-quickstart-consumer-group
