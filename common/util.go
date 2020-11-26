@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -72,10 +73,17 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 		// Make the request
 		resp, err = http.DefaultClient.Do(req)
 		if err != nil {
+			body := ""
+			if resp != nil {
+				defer resp.Body.Close()
+				b, _ := ioutil.ReadAll(resp.Body)
+				body = string(b)
+			}
 			logger.Error("sending function invocation request failed",
 				zap.Error(err),
 				zap.String("http_endpoint", data.HTTPEndpoint),
-				zap.String("source", data.SourceName))
+				zap.String("source", data.SourceName),
+				zap.String("response", body))
 			continue
 		}
 		if resp == nil {
