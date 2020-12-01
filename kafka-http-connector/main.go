@@ -182,6 +182,28 @@ func getConfig(metadata kafkaMetadata) (*sarama.Config, error) {
 	return config, nil
 }
 
+func extractControlHeaders(headers []sarama.RecordHeader) ([]byte, bool, []sarama.RecordHeader) {
+	var (
+		key []byte
+	)
+	tombstone := false
+	var cleaned []sarama.RecordHeader
+	for _, header := range headers {
+		if strings.ToLower(string(header.Key)) == "keda-message-key" {
+			key = header.Value
+			continue
+		}
+
+		if strings.ToLower(string(header.Key)) == "keda-message-tombstone" {
+			tombstone = true
+			continue
+		}
+		cleaned = append(cleaned, header)
+	}
+
+	return key, tombstone, cleaned
+}
+
 // kafkaConnector represents a Sarama consumer group consumer
 type kafkaConnector struct {
 	ready         chan bool
@@ -209,7 +231,7 @@ func (conn *kafkaConnector) ConsumeClaim(session sarama.ConsumerGroupSession, cl
 	// The `ConsumeClaim` itself is called within a goroutine, see:
 	// https://github.com/Shopify/sarama/blob/master/consumer_group.go#L27-L29
 	for message := range claim.Messages() {
-		conn.logger.Info(fmt.Sprintf("Message claimed: value = %s, timestamp = %v, topic = %s", string(message.Value), message.Timestamp, message.Topic))
+		conn.logger.Info(fmt.Sprintf("Message claimed: key = %s, value = %s, timestamp = %v, topic = %s", string(message.Key), string(message.Value), message.Timestamp, message.Topic))
 		msg := string(message.Value)
 
 		headers := http.Header{
@@ -218,6 +240,17 @@ func (conn *kafkaConnector) ConsumeClaim(session sarama.ConsumerGroupSession, cl
 			"KEDA-Error-Topic":    {conn.connectorData.ErrorTopic},
 			"Content-Type":        {conn.connectorData.ContentType},
 			"KEDA-Source-Name":    {conn.connectorData.SourceName},
+		}
+
+		// Add the message key, if it's been set.
+		if message.Key != nil {
+			headers.Add("KEDA-Message-Key", string(message.Key))
+		}
+
+		// Indicate that this is a tombstone, not a empty message.
+		// Normally indicative of a deletion request
+		if message.Value == nil {
+			headers.Add("KEDA-Message-Tombstone", "true")
 		}
 
 		// Set the headers came from Kafka record
@@ -275,12 +308,29 @@ func (conn *kafkaConnector) errorHandler(err error) {
 }
 
 func (conn *kafkaConnector) responseHandler(msg string, headers []sarama.RecordHeader) bool {
+
+	// extract the key and tombstone should they exist.
+	key, tombstone, headers := extractControlHeaders(headers)
+
 	if len(conn.connectorData.ResponseTopic) > 0 {
-		_, _, err := conn.producer.SendMessage(&sarama.ProducerMessage{
+		message := &sarama.ProducerMessage{
 			Topic:   conn.connectorData.ResponseTopic,
-			Value:   sarama.StringEncoder(msg),
 			Headers: headers,
-		})
+		}
+
+		if key != nil {
+			message.Key = sarama.StringEncoder(key)
+		}
+
+		if len(msg) > 0 || !tombstone {
+			message.Value = sarama.StringEncoder(msg)
+		}
+
+		if tombstone {
+			conn.logger.Warn("Sending a Tombstone")
+		}
+
+		_, _, err := conn.producer.SendMessage(message)
 		if err != nil {
 			conn.logger.Warn("failed to publish response body from http request to topic",
 				zap.Error(err),
