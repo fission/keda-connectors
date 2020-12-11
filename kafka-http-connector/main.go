@@ -260,22 +260,15 @@ func (conn *kafkaConnector) ConsumeClaim(session sarama.ConsumerGroupSession, cl
 
 		resp, err := common.HandleHTTPRequest(msg, headers, conn.connectorData, conn.logger)
 		if err != nil {
-			conn.errorHandler(err)
+			conn.errorHandler(resp, err)
 		} else {
 			defer resp.Body.Close()
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
-				conn.errorHandler(err)
+				conn.errorHandler(nil, err)
 			} else {
 				// Generate Kafka record headers
-				var kafkaRecordHeaders []sarama.RecordHeader
-
-				for k, v := range resp.Header {
-					// One key may have multiple values
-					for _, v := range v {
-						kafkaRecordHeaders = append(kafkaRecordHeaders, sarama.RecordHeader{Key: []byte(k), Value: []byte(v)})
-					}
-				}
+				kafkaRecordHeaders := mapHeaders(resp)
 				if success := conn.responseHandler(string(body), kafkaRecordHeaders); success {
 					session.MarkMessage(message, "")
 				}
@@ -285,12 +278,33 @@ func (conn *kafkaConnector) ConsumeClaim(session sarama.ConsumerGroupSession, cl
 	return nil
 }
 
-func (conn *kafkaConnector) errorHandler(err error) {
+func mapHeaders(resp *http.Response) []sarama.RecordHeader {
+	var kafkaRecordHeaders []sarama.RecordHeader
+
+	for k, v := range resp.Header {
+		// One key may have multiple values
+		for _, v := range v {
+			kafkaRecordHeaders = append(kafkaRecordHeaders, sarama.RecordHeader{Key: []byte(k), Value: []byte(v)})
+		}
+	}
+	return kafkaRecordHeaders
+}
+
+func (conn *kafkaConnector) errorHandler(resp *http.Response, err error) {
 	if len(conn.connectorData.ErrorTopic) > 0 {
-		_, _, e := conn.producer.SendMessage(&sarama.ProducerMessage{
+		message := &sarama.ProducerMessage{
 			Topic: conn.connectorData.ErrorTopic,
 			Value: sarama.StringEncoder(err.Error()),
-		})
+		}
+		if resp != nil {
+			kafkaRecordHeaders := mapHeaders(resp)
+			key, _, headers := extractControlHeaders(kafkaRecordHeaders)
+			message.Headers = headers
+			if key != nil {
+				message.Key = sarama.StringEncoder(key)
+			}
+		}
+		_, _, e := conn.producer.SendMessage(message)
 		if e != nil {
 			conn.logger.Error("failed to publish message to error topic",
 				zap.Error(e),
@@ -324,10 +338,6 @@ func (conn *kafkaConnector) responseHandler(msg string, headers []sarama.RecordH
 
 		if len(msg) > 0 || !tombstone {
 			message.Value = sarama.StringEncoder(msg)
-		}
-
-		if tombstone {
-			conn.logger.Warn("Sending a Tombstone")
 		}
 
 		_, _, err := conn.producer.SendMessage(message)
