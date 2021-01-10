@@ -127,7 +127,7 @@ func (conn awsSQSConnector) responseHandler(queueURL string, response string, me
 			return false
 		}
 	} else {
-		conn.logger.Info(response)
+		conn.logger.Debug("response received", zap.String("response", response))
 	}
 	return true
 }
