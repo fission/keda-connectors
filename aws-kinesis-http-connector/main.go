@@ -196,7 +196,7 @@ func (conn *awsKinesisConnector) consumeMessage(r *record) {
 		"KEDA-Source-Name":    {conn.connectordata.SourceName},
 	}
 
-	resp, err := common.HandleHTTPRequest(string(r.Data), headers, conn.connectordata, conn.logger)
+	_, resp, err := common.HandleHTTPRequest(string(r.Data), headers, conn.connectordata, conn.logger)
 	if err != nil {
 		conn.errorHandler(r, err.Error())
 	} else {

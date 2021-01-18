@@ -51,7 +51,7 @@ func (conn rabbitMQConnector) consumeMessage() {
 			sem <- 1
 			go func(d amqp.Delivery) {
 				msg := string(d.Body)
-				resp, err := common.HandleHTTPRequest(msg, headers, conn.connectordata, conn.logger)
+				_, resp, err := common.HandleHTTPRequest(msg, headers, conn.connectordata, conn.logger)
 				if err != nil {
 					conn.errorHandler(err)
 				} else {

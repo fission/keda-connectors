@@ -225,7 +225,7 @@ func (conn *kafkaConnector) ConsumeClaim(session sarama.ConsumerGroupSession, cl
 			headers.Add(string(h.Key), string(h.Value))
 		}
 
-		resp, err := common.HandleHTTPRequest(msg, headers, conn.connectorData, conn.logger)
+		_, resp, err := common.HandleHTTPRequest(msg, headers, conn.connectorData, conn.logger)
 		if err != nil {
 			conn.errorHandler(err)
 		} else {

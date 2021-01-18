@@ -32,7 +32,7 @@ func (conn natsConnector) consumeMessage() {
 	_, err := conn.stanConnection.QueueSubscribe(os.Getenv("TOPIC"), os.Getenv("QUEUE_GROUP"), func(m *stan.Msg) {
 		msg := string(m.Data)
 		conn.logger.Info(msg)
-		resp, err := common.HandleHTTPRequest(msg, headers, conn.connectordata, conn.logger)
+		_, resp, err := common.HandleHTTPRequest(msg, headers, conn.connectordata, conn.logger)
 		if err != nil {
 			conn.logger.Info(err.Error())
 			conn.errorHandler(err)
