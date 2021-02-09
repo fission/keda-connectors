@@ -95,13 +95,14 @@ func (conn pubsubConnector) consumeMessage() {
 			}
 			conn.logger.Error("Error sending the message to the endpoint %v", zap.Error(err))
 		} else {
+			defer resp.Body.Close()
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
 				if conn.connectordata.ErrorTopic != "" {
 					conn.responseOrErrorHandler(conn.connectordata.ErrorTopic, string(body), headers)
 				}
 				conn.logger.Error("Error reading body", zap.Error(err))
-				resp.Body.Close()
+
 			} else {
 				msg.Ack()
 				if conn.connectordata.ResponseTopic != "" {
