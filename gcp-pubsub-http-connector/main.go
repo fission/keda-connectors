@@ -130,6 +130,10 @@ func (conn pubsubConnector) responseOrErrorHandler(topicID string, response stri
 		Attributes: convHeadersToAttr(headers),
 	})
 
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+
 	go func(res *pubsub.PublishResult) {
 		// The Get method blocks until a server-generated ID or
 		// an error is returned for the published message.
@@ -139,6 +143,9 @@ func (conn pubsubConnector) responseOrErrorHandler(topicID string, response stri
 			return
 		}
 	}(result)
+
+	wg.Wait()
+
 	conn.logger.Info("Published message , topic name: %v\n", zap.String("Topic", topicID))
 
 }
