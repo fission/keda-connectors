@@ -52,7 +52,7 @@ func ParseConnectorMetadata() (ConnectorMetadata, error) {
 }
 
 // HandleHTTPRequest sends message and headers data to HTTP endpoint using POST method and returns response on success or error in case of failure
-func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetadata, logger *zap.Logger) (int, *http.Response, error) {
+func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetadata, logger *zap.Logger) (*int, *http.Response, error) {
 
 	var resp *http.Response
 	for attempt := 0; attempt <= data.MaxRetries; attempt++ {
@@ -60,7 +60,7 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 		req, err := http.NewRequest("POST", data.HTTPEndpoint, strings.NewReader(message))
 		if err != nil {
 			// Request not sent.
-			return -1, nil, errors.Wrapf(err, "failed to create HTTP request to invoke function. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
+			return nil, nil, errors.Wrapf(err, "failed to create HTTP request to invoke function. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
 		}
 
 		// Add headers
@@ -84,18 +84,18 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 		}
 		if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			// Success, quit retrying
-			return resp.StatusCode, resp, nil
+			return &resp.StatusCode, resp, nil
 		}
 	}
 
 	if resp == nil {
-		return -1, nil, fmt.Errorf("every function invocation retry failed; final retry gave empty response. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
+		return nil, nil, fmt.Errorf("every function invocation retry failed; final retry gave empty response. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode > 300 {
-		return resp.StatusCode, resp, fmt.Errorf("request returned failure: %v. http_endpoint: %v, source: %v", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
+		return &resp.StatusCode, resp, fmt.Errorf("request returned failure: %v. http_endpoint: %v, source: %v", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
 	}
-	return resp.StatusCode, resp, nil
+	return &resp.StatusCode, resp, nil
 }
 
 //GetAwsConfig get's the configuration required to connect to aws
