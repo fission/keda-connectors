@@ -5,6 +5,10 @@ github.com/aws/aws-sdk-go v1.34.25/go.mod h1:5zCpMtNQVjRREroY7sYe8lOMRSxkhG6MZve
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/fission/keda-connectors/common v0.0.0-20200915102844-c68eb4e4d582 h1:dBEd5TkrxnImIE+rXJG+vymYX2ZqtbRfOAu+ak929cA=
+github.com/fission/keda-connectors/common v0.0.0-20200915102844-c68eb4e4d582/go.mod h1:WGr9mV3DArFdiSCg6PKXaeQ5XPNzZY4aWAj/oL63+qo=
+github.com/fission/keda-connectors/common v0.0.0-20210204070438-3b74480a5e70 h1:PI6+71zxuvIrypARTHpYEJqOcNzJAL5S1Yi9yvlevP0=
+github.com/fission/keda-connectors/common v0.0.0-20210204070438-3b74480a5e70/go.mod h1:eJ7ViC/moBvbXCIxlbT4JLfMi8dg00SnjyNyYvD0vg8=
 github.com/go-sql-driver/mysql v1.5.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/jmespath/go-jmespath v0.3.0 h1:OS12ieG61fsCg5+qLJ+SsW9NicxNkg3b25OyT2yCeUc=

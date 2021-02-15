@@ -273,7 +273,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config, err := common.getAwsConfig()
+	config, err := common.GetAwsConfig()
 	if err != nil {
 		logger.Error("failed to fetch aws config", zap.Error(err))
 		return
