@@ -51,7 +51,8 @@ func ParseConnectorMetadata() (ConnectorMetadata, error) {
 	return meta, nil
 }
 
-// HandleHTTPRequest sends message and headers data to HTTP endpoint using POST method and returns response on success or error in case of failure
+// HandleHTTPRequest sends message and headers data to HTTP endpoint using POST method and returns the HTTP response code (pass or fail, but nil on failed request),
+// the response (nil on failed request) and an error in case of failure in either request or in the server's handling of the request
 func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetadata, logger *zap.Logger) (*int, *http.Response, error) {
 
 	var resp *http.Response
