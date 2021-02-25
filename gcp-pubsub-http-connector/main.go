@@ -91,7 +91,7 @@ func (conn pubsubConnector) consumeMessage() {
 		resp, err := common.HandleHTTPRequest(string(msg.Data), headers, conn.connectordata, conn.logger)
 		if err != nil {
 			if conn.connectordata.ErrorTopic != "" {
-				conn.responseOrErrorHandler(conn.connectordata.ErrorTopic, "Error", headers)
+				conn.responseOrErrorHandler(conn.connectordata.ErrorTopic, err.Error(), headers)
 			}
 			conn.logger.Error("Error sending the message to the endpoint %v", zap.Error(err))
 		} else {
