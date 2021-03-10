@@ -103,6 +103,7 @@ func parseKafkaMetadata(logger *zap.Logger) (kafkaMetadata, error) {
 	}
 
 	if meta.tls == "enable" {
+		// if either CERT or KEY are provided, both must be provided
 		if os.Getenv("CERT") != "" && os.Getenv("KEY") == "" {
 			return meta, errors.New("cert given but no key, both required")
 		}
@@ -111,7 +112,9 @@ func parseKafkaMetadata(logger *zap.Logger) (kafkaMetadata, error) {
 			return meta, errors.New("key given but no cert, both required")
 		}
 
+		// CA is optional
 		meta.ca = os.Getenv("CA")
+		// CERT and KEY must be provided as a pair, but both are optional
 		meta.cert = os.Getenv("CERT")
 		meta.key = os.Getenv("KEY")
 	}
