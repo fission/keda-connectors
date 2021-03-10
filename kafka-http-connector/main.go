@@ -103,19 +103,16 @@ func parseKafkaMetadata(logger *zap.Logger) (kafkaMetadata, error) {
 	}
 
 	if meta.tls == "enable" {
-		if os.Getenv("CA") == "" {
-			return meta, errors.New("no ca given")
+		if os.Getenv("CERT") != "" && os.Getenv("KEY") == "" {
+			return meta, errors.New("cert given but no key, both required")
 		}
+
+		if os.Getenv("KEY") != "" && os.Getenv("CERT") == "" {
+			return meta, errors.New("key given but no cert, both required")
+		}
+
 		meta.ca = os.Getenv("CA")
-
-		if os.Getenv("CERT") == "" {
-			return meta, errors.New("no cert given")
-		}
 		meta.cert = os.Getenv("CERT")
-
-		if os.Getenv("KEY") == "" {
-			return meta, errors.New("no key given")
-		}
 		meta.key = os.Getenv("KEY")
 	}
 
