@@ -5,12 +5,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
-	"time"
 
 	"github.com/fission/keda-connectors/common"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan.go"
+	"github.com/rs/xid"
 	"go.uber.org/zap"
 )
 
@@ -46,12 +45,14 @@ func (conn natsConnector) consumeMessage() {
 				conn.errorHandler(err)
 			} else {
 				if success := conn.responseHandler(body); success {
+					m.Ack()
 					conn.logger.Info("Done processing message",
 						zap.String("messsage", string(body)))
 				}
 			}
 		}
-	}, stan.DurableName(os.Getenv("DURABLE_NAME")), stan.DeliverAllAvailable())
+	}, stan.DurableName(os.Getenv("DURABLE_NAME")), stan.DeliverAllAvailable(),
+		stan.SetManualAckMode(), stan.MaxInflight(1))
 
 	if err != nil {
 		conn.logger.Fatal("error occurred while consuming message", zap.Error(err))
@@ -113,8 +114,8 @@ func main() {
 		logger.Fatal("failed to establish connection with NATS", zap.Error(err))
 	}
 
-	clientId := strconv.FormatInt(time.Now().UnixNano(), 10)
-	sc, err := stan.Connect(os.Getenv("CLUSTER_ID"), clientId, stan.NatsConn(nc))
+	clientId := xid.New()
+	sc, err := stan.Connect(os.Getenv("CLUSTER_ID"), clientId.String(), stan.NatsConn(nc))
 	if err != nil {
 		log.Fatal(err)
 	}
