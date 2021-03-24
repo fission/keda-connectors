@@ -17,7 +17,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	for i := 100; i < 102; i++ {
+	for i := 100; i < 1000; i++ {
 		sc.Publish("hello", []byte("Test"+strconv.Itoa(i)))
 	}
 

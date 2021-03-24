@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/fission/keda-connectors/common"
 	"github.com/nats-io/nats.go"
@@ -111,7 +113,8 @@ func main() {
 		logger.Fatal("failed to establish connection with NATS", zap.Error(err))
 	}
 
-	sc, err := stan.Connect(os.Getenv("CLUSTER_ID"), os.Getenv("CLIENT_ID"), stan.NatsConn(nc))
+	clientId := strconv.FormatInt(time.Now().UnixNano(), 10)
+	sc, err := stan.Connect(os.Getenv("CLUSTER_ID"), clientId, stan.NatsConn(nc))
 	if err != nil {
 		log.Fatal(err)
 	}
