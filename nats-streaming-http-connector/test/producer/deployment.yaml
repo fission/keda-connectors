@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nats-pub
+  name: nats-pub
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: nats-pub
+  template:
+    metadata:
+      labels:
+        app: nats-pub
+    spec:
+      containers:
+      - image: producer:latest
+        imagePullPolicy: Never
+        name: producer

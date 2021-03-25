@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 
 	"github.com/fission/keda-connectors/common"
 	"github.com/nats-io/nats.go"
@@ -30,7 +31,7 @@ func (conn natsConnector) consumeMessage() {
 		"Source-Name":  {conn.connectordata.SourceName},
 	}
 	forever := make(chan bool)
-	_, err := conn.stanConnection.QueueSubscribe(os.Getenv("TOPIC"), os.Getenv("QUEUE_GROUP"), func(m *stan.Msg) {
+	sub, err := conn.stanConnection.QueueSubscribe(os.Getenv("TOPIC"), os.Getenv("QUEUE_GROUP"), func(m *stan.Msg) {
 		msg := string(m.Data)
 		conn.logger.Info(msg)
 		resp, err := common.HandleHTTPRequest(msg, headers, conn.connectordata, conn.logger)
@@ -59,6 +60,19 @@ func (conn natsConnector) consumeMessage() {
 	}
 
 	conn.logger.Info("NATs consumer up and running!...")
+
+	// Wait for a SIGINT (perhaps triggered by user with CTRL-C)
+	// Run cleanup when signal is received
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt)
+	go func() {
+		for range signalChan {
+			conn.logger.Info("Received an interrupt, unsubscribing and closing connection...")
+			sub.Unsubscribe()
+			conn.stanConnection.Close()
+			forever <- true
+		}
+	}()
 	<-forever
 }
 
