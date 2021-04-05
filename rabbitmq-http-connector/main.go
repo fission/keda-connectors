@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/streadway/amqp"
 	"go.uber.org/zap"
@@ -44,7 +45,17 @@ func (conn rabbitMQConnector) consumeMessage() {
 	}
 
 	forever := make(chan bool)
-	sem := make(chan int, 10) // Process maximum 10 messages concurrently
+	concurrent := 0
+	if os.Getenv("CONCURRENT") == "" {
+		concurrent = 10 // Set concurrent to 10 when env not exist
+	} else {
+		concurrent, err = strconv.Atoi(os.Getenv("CONCURRENT")) // The env will be str by default, convert it to int
+		if err != nil {
+			// Whenn error happened, use the default concurrent
+			concurrent = 10
+		}
+	}
+	sem := make(chan int, concurrent) // Process messages concurrently
 
 	go func() {
 		for d := range msgs {

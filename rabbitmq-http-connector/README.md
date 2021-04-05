@@ -10,5 +10,6 @@ The job of the connector is to read messages from the queue, call an HTTP endpoi
 - `MAX_RETRIES`: Maximum number of times an http endpoint will be retried upon failure.
 - `CONTENT_TYPE`: Content type used while creating post request
 - `HOST`: AMQP URI connection string, like `amqp://guest:password@localhost:5672/vhost`
+- `CONCURRENT`: The maximum concurrent message to process at the same time.
 
 More information about the above parameters and how to define it scaledobject refer [RabbitMQ scaler doc](https://keda.sh/docs/1.5/scalers/rabbitmq-queue/).
