@@ -25,6 +25,10 @@ jobs:
               - 'aws-sqs-http-connector/version'
             nats-streaming-http-connector:
               - 'nats-streaming-http-connector/version'
+            aws-kinesis-http-connector:
+              - 'aws-kinesis-http-connector/version'
+            gcp-pubsub-http-connector:
+              - 'gcp-pubsub-http-connector/version'
   run-docker-build-push-action:
     needs: check
     strategy:
@@ -46,4 +50,4 @@ jobs:
       with:
         context: ${{ matrix.run }}
       #  tags: fission/keda-${{ matrix.run }}:latest,fission/keda-${{ matrix.run }}:${{env.version}}
-      #  push: true 
+      #  push: true
