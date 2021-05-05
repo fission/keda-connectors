@@ -1,0 +1,49 @@
+name: Release
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - '**/version'
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.filter.outputs.changes }}
+    steps:
+      - name: Checkout the current repo
+        uses: actions/checkout@v2
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            kafka-http-connector:
+              - 'kafka-http-connector/version'
+            rabbitmq-http-connector:
+              - 'rabbitmq-http-connector/version'
+            aws-sqs-http-connector:
+              - 'aws-sqs-http-connector/version'
+            nats-streaming-http-connector:
+              - 'nats-streaming-http-connector/version'
+  run-docker-build-push-action:
+    needs: check
+    strategy:
+      matrix:
+       run: ${{ fromJSON(needs.check.outputs.packages) }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout sources
+      uses: actions/checkout@v2
+    - name: get version
+      run: cd ${{ matrix.run }}; version=$(cat version);echo "version=$version" >> $GITHUB_ENV
+    - name: Login to DockerHub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Build and Push the docker image
+      uses: docker/build-push-action@v2
+      with:
+        context: ${{ matrix.run }}
+      #  tags: fission/keda-${{ matrix.run }}:latest,fission/keda-${{ matrix.run }}:${{env.version}}
+      #  push: true 
