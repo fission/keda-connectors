@@ -5,10 +5,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 
 	"github.com/fission/keda-connectors/common"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan.go"
+	"github.com/rs/xid"
 	"go.uber.org/zap"
 )
 
@@ -29,7 +31,7 @@ func (conn natsConnector) consumeMessage() {
 		"Source-Name":  {conn.connectordata.SourceName},
 	}
 	forever := make(chan bool)
-	_, err := conn.stanConnection.QueueSubscribe(os.Getenv("TOPIC"), os.Getenv("QUEUE_GROUP"), func(m *stan.Msg) {
+	sub, err := conn.stanConnection.QueueSubscribe(os.Getenv("TOPIC"), os.Getenv("QUEUE_GROUP"), func(m *stan.Msg) {
 		msg := string(m.Data)
 		conn.logger.Info(msg)
 		resp, err := common.HandleHTTPRequest(msg, headers, conn.connectordata, conn.logger)
@@ -44,18 +46,33 @@ func (conn natsConnector) consumeMessage() {
 				conn.errorHandler(err)
 			} else {
 				if success := conn.responseHandler(body); success {
+					m.Ack()
 					conn.logger.Info("Done processing message",
 						zap.String("messsage", string(body)))
 				}
 			}
 		}
-	}, stan.DurableName(os.Getenv("DURABLE_NAME")), stan.DeliverAllAvailable())
+	}, stan.DurableName(os.Getenv("DURABLE_NAME")), stan.DeliverAllAvailable(),
+		stan.SetManualAckMode(), stan.MaxInflight(1))
 
 	if err != nil {
 		conn.logger.Fatal("error occurred while consuming message", zap.Error(err))
 	}
 
 	conn.logger.Info("NATs consumer up and running!...")
+
+	// Wait for a SIGINT (perhaps triggered by user with CTRL-C)
+	// Run cleanup when signal is received
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt)
+	go func() {
+		for range signalChan {
+			conn.logger.Info("Received an interrupt, unsubscribing and closing connection...")
+			sub.Unsubscribe()
+			conn.stanConnection.Close()
+			forever <- true
+		}
+	}()
 	<-forever
 }
 
@@ -111,7 +128,8 @@ func main() {
 		logger.Fatal("failed to establish connection with NATS", zap.Error(err))
 	}
 
-	sc, err := stan.Connect(os.Getenv("CLUSTER_ID"), os.Getenv("CLIENT_ID"), stan.NatsConn(nc))
+	clientId := xid.New()
+	sc, err := stan.Connect(os.Getenv("CLUSTER_ID"), clientId.String(), stan.NatsConn(nc))
 	if err != nil {
 		log.Fatal(err)
 	}
