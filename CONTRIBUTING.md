@@ -126,5 +126,6 @@ keda-connectors is using github actions to standardize the release process using
 
 ### version file
 
-There is a version file inside each connector to mantain the version number of the connector release also to push the changed version to dockerhub along with latest tag using `.github/workflows/release.yml`. 
+There is a version file inside each connector to mantain the version number of the connector release also to push the changed version to dockerhub along with latest tag using `.github/workflows/release.yml`.
+
 ***Note: Whenever a new pr is raised for a specific connector, the version number should also be increased in the version file.***
