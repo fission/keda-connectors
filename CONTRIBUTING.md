@@ -12,7 +12,9 @@ There are many areas we can use contributions - ranging from code, documentation
         * [errorHandler](#errorhandler)
         * [responseHandler](#responsehandler)
         * [Dockerfile and plumbing](#dockerfile-and-plumbing)
-
+    * [keda-connectors ci/cd and release workflow ](#keda-connectors-ci/cd-and-release-workflow)
+        * [version file](#version-file)
+      
 ## Choose what to work on
 
 * The easiest way to start is to look at existing [issues](https://github.com/fission/keda-connectors/issues) and see if there's something there that you'd like to work on
@@ -117,3 +119,13 @@ If the request to HTTPEndpoint succeeded then the ResponseTopic of ConnectorMeta
 #### Dockerfile and plumbing
 
 You need to write a Dockerfile which will use your go program with dependencies added and create an image. Now you can use this image to test by passing all environment variables appropriately.
+
+## ci/cd and release workflow
+
+keda-connectors is using github actions to standardize the release process using `.github/workflows` folder
+
+### version file
+
+There is a version file inside each connector to mantain the version number of the connector release also to push the changed version to dockerhub along with latest tag using `.github/workflows/release.yml`.
+
+***Note: Whenever a new pr is raised for a specific connector, the version number should also be increased in the version file.***
