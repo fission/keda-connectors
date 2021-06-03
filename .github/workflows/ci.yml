@@ -64,9 +64,9 @@ jobs:
         run: |
           cd kafka-http-connector/test/kubernetes/
           kubectl create namespace kafka
-          curl -L http://strimzi.io/install/latest | sed 's/namespace: .*/namespace: kafka/' | kubectl apply -f - -n kafka
+          curl -L http://strimzi.io/install/latest | sed 's/namespace: .*/namespace: kafka/' | kubectl create -f - -n kafka
           sleep 10s
-          kubectl apply -f kafka-cluster.yaml
+          kubectl create -f kafka-cluster.yaml
           echo "Kafka Cluster is getting up."
           kubectl wait -f kafka-cluster.yaml --for=condition=ready --timeout=-1s -n kafka
           sleep 2m
