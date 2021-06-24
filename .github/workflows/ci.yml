@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - master
+      - main
   pull_request:
     branches:
       - master
@@ -10,9 +11,9 @@ env:
   KIND_URL: https://kind.sigs.k8s.io/dl
   KIND_VER: v0.8.1
   KIND_ENV: kind-linux-amd64
-
+  
 jobs:
-  Connector-Tests:
+  check:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the current repo
@@ -26,7 +27,12 @@ jobs:
             rabbitmqchanges: 
               - 'rabbitmq-http-connector/**'   
             sqschanges:  
-              - 'aws-sqs-http-connector/**'                                     
+              - 'aws-sqs-http-connector/**' 
+  kafka: 
+    needs: check 
+    if: contains(needs.check.outputs.packages, 'kafkachanges') 
+    runs-on: ubuntu-latest 
+    steps: 
       - name: Install Kind Cluster
         run: |
           curl -Lo ./kind $KIND_URL/$KIND_VER/$KIND_ENV      
@@ -104,7 +110,25 @@ jobs:
           cd kafka-http-connector/test/consumer/
           kubectl apply -f consumer-deployment.yaml
           kubectl wait pod -l app=consumer --for=condition=ready --timeout=-1s -n kafka
-          kubectl logs -l app=consumer --all-containers=true -n kafka
+          kubectl logs -l app=consumer --all-containers=true -n kafka         
+  rabbitmq: 
+    needs: check 
+    if: contains(needs.check.outputs.packages, 'rabbitmqchanges') 
+    runs-on: ubuntu-latest 
+    steps: 
+      - name: Install Kind Cluster
+        run: |
+          curl -Lo ./kind $KIND_URL/$KIND_VER/$KIND_ENV      
+          chmod +x ./kind
+          sudo mv ./kind /usr/bin/
+      - name: Install KEDA using HELM    
+        run: |
+          cd test/
+          ./registry.sh
+          helm repo add kedacore https://kedacore.github.io/charts
+          helm repo update
+          kubectl create namespace keda
+          helm install keda kedacore/keda --namespace keda
       - name: Create Docker Image for Rabbitmq KEDA Connector
         if: steps.filter.outputs.rabbitmqchanges == 'true'        
         run: |
@@ -155,7 +179,24 @@ jobs:
         if: steps.filter.outputs.rabbitmqchanges == 'true'        
         run: |
           sleep 10s
-          kubectl logs  -n rabbits deployment.apps/rabbitmq-consumer
+          kubectl logs  -n rabbits deployment.apps/rabbitmq-consumer       
+  sqs: 
+    needs: check 
+    if: contains(needs.check.outputs.packages, 'sqschanges') 
+    runs-on: ubuntu-latest   
+    steps: 
+      - name: Install Kind Cluster
+        run: |
+          curl -Lo ./kind $KIND_URL/$KIND_VER/$KIND_ENV      
+          chmod +x ./kind
+          sudo mv ./kind /usr/bin/
+      - name: Install KEDA using HELM    
+        run: |
+          cd test/
+          ./registry.sh
+          helm repo add kedacore https://kedacore.github.io/charts
+          helm repo update
+          kubectl create namespace keda
       - name: Create Docker Image for SQS KEDA Connector
         if: steps.filter.outputs.sqschanges == 'true'        
         run: |
