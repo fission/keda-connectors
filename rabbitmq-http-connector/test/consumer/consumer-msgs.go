@@ -36,6 +36,9 @@ func main() {
 		false,                 // no-wait
 		nil,                   // arguments
 	)
+	if err != nil {
+		log.Fatalf("%s: %s", "Failed to declare a queue", err)
+	}
 	defer ch.Close()
 
 	// We consume data from the queue named Test using the channel we created in go.
@@ -49,6 +52,9 @@ func main() {
 	// The msgs will be a go channel, not an amqp channel
 	for msg := range msgs {
 		fmt.Println(string(msg.Body))
-		msg.Ack(false)
+		err = msg.Ack(false)
+		if err != nil {
+			fmt.Println("error acking the message: " + err.Error())
+		}
 	}
 }

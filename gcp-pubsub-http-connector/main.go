@@ -76,9 +76,8 @@ func (conn pubsubConnector) consumeMessage() {
 
 	var mu sync.Mutex
 	sub := client.Subscription(conn.pubsubInfo.SubscriptionID)
-	cctx, _ := context.WithCancel(ctx)
 
-	err = sub.Receive(cctx, func(ctx context.Context, msg *pubsub.Message) {
+	err = sub.Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
 		mu.Lock()
 		defer mu.Unlock()
 
@@ -113,6 +112,9 @@ func (conn pubsubConnector) consumeMessage() {
 		}
 
 	})
+	if err != nil {
+		conn.logger.Error(err.Error())
+	}
 
 }
 

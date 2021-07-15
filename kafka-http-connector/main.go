@@ -231,7 +231,6 @@ func (conn *kafkaConnector) ConsumeClaim(session sarama.ConsumerGroupSession, cl
 		if err != nil {
 			conn.errorHandler(err)
 		} else {
-			defer resp.Body.Close()
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
 				conn.errorHandler(err)
@@ -248,6 +247,10 @@ func (conn *kafkaConnector) ConsumeClaim(session sarama.ConsumerGroupSession, cl
 				if success := conn.responseHandler(string(body), kafkaRecordHeaders); success {
 					session.MarkMessage(message, "")
 				}
+			}
+			err = resp.Body.Close()
+			if err != nil {
+				conn.logger.Error(err.Error())
 			}
 		}
 	}
