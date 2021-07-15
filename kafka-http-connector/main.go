@@ -29,8 +29,8 @@ import (
 
 // https://github.com/kedacore/keda/blob/v1.5.0/pkg/scalers/kafka_scaler.go#L28
 type kafkaMetadata struct {
-	bootstrapServers []string
-	consumerGroup    string
+	bootstrapServers  []string
+	consumerGroup     string
 	offsetResetPolicy string
 
 	// auth
@@ -79,7 +79,7 @@ func parseKafkaMetadata(logger *zap.Logger) (kafkaMetadata, error) {
 	offsetResetPolicy := os.Getenv("OFFSET_RESET_POLICY")
 
 	// If offsetResetPolicy is not set, use latest by default
-	if offsetResetPolicy == ""  {
+	if offsetResetPolicy == "" {
 		offsetResetPolicy = "latest"
 	}
 

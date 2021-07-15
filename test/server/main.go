@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-//	"time"
+	//	"time"
 )
 
 var (
@@ -29,7 +29,7 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 
 // PostHandler converts post request body to string
 func PostHandler(w http.ResponseWriter, r *http.Request) {
-//	fmt.Println("Request Received.")
+	//	fmt.Println("Request Received.")
 	if r.Method == "POST" {
 
 		body, err := ioutil.ReadAll(r.Body)
@@ -39,11 +39,11 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		results = string(body)
 		fmt.Println(results)
-		fmt.Fprint(w,results)
+		fmt.Fprint(w, results)
 	} else {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 	}
-//	fmt.Println("Request Served Successfully")
+	//	fmt.Println("Request Served Successfully")
 }
 
 func init() {
@@ -52,7 +52,7 @@ func init() {
 }
 
 func main() {
-//	results = append(results, time.Now().Format(time.RFC3339))
+	//	results = append(results, time.Now().Format(time.RFC3339))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", GetHandler)
@@ -61,4 +61,3 @@ func main() {
 	log.Printf("listening on port %s", *flagPort)
 	log.Fatal(http.ListenAndServe(":"+*flagPort, mux))
 }
-

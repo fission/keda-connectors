@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"log"
-        "os"
 	"github.com/streadway/amqp"
+	"log"
+	"os"
 )
 
 var rabbit_host = os.Getenv("RABBIT_HOST")
@@ -72,4 +72,3 @@ func submit() {
 		fmt.Println("Publishing a message is  successful!")
 	}
 }
-
