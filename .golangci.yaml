@@ -1,18 +1,32 @@
 linters:
   enable:
     - deadcode
-    - gofmt
-    - goimports
+    - errcheck
     - gosimple
     - govet
     - ineffassign
-    - misspell
-    - nakedret
     - staticcheck
     - structcheck
     - typecheck
-    - unconvert
+    - unused
     - varcheck
+    # Additional linters
+    - gofmt
+    - goimports
+    - misspell
+    - nakedret
+    - unconvert
+    - bodyclose
+    - dogsled
+    - dupl
+    # - gosec
+    - ifshort
+    - nilerr
+    - prealloc
+    # - revive
+    - unparam
+    # - wrapcheck
+    # - gocritic
 linters-settings:
   errcheck:
     ignore: go.uber.org/zap:Sync
