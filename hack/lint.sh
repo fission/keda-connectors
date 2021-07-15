@@ -18,7 +18,7 @@ for dir in $(find . -name version); do
     }
     assert-nothing-changed go fmt ./...
     assert-nothing-changed go mod tidy
-    golangci-lint run --out-format=github-actions --timeout=5m || STATUS=$?
+    golangci-lint run --out-format=github-actions --timeout=5m --path-prefix $connector || STATUS=$?
     popd
     echo "Status: $STATUS"
     echo "========================"
