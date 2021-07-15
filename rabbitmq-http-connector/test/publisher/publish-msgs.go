@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/streadway/amqp"
 	"log"
 	"os"
+
+	"github.com/streadway/amqp"
 )
 
 var rabbit_host = os.Getenv("RABBIT_HOST")

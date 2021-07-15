@@ -7,11 +7,12 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/fission/keda-connectors/common"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan.go"
 	"github.com/rs/xid"
 	"go.uber.org/zap"
+
+	"github.com/fission/keda-connectors/common"
 )
 
 type natsConnector struct {
