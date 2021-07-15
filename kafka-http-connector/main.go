@@ -29,8 +29,8 @@ import (
 
 // https://github.com/kedacore/keda/blob/v1.5.0/pkg/scalers/kafka_scaler.go#L28
 type kafkaMetadata struct {
-	bootstrapServers []string
-	consumerGroup    string
+	bootstrapServers  []string
+	consumerGroup     string
 	offsetResetPolicy string
 
 	// auth
@@ -79,7 +79,7 @@ func parseKafkaMetadata(logger *zap.Logger) (kafkaMetadata, error) {
 	offsetResetPolicy := os.Getenv("OFFSET_RESET_POLICY")
 
 	// If offsetResetPolicy is not set, use latest by default
-	if offsetResetPolicy == ""  {
+	if offsetResetPolicy == "" {
 		offsetResetPolicy = "latest"
 	}
 
@@ -231,7 +231,6 @@ func (conn *kafkaConnector) ConsumeClaim(session sarama.ConsumerGroupSession, cl
 		if err != nil {
 			conn.errorHandler(err)
 		} else {
-			defer resp.Body.Close()
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
 				conn.errorHandler(err)
@@ -248,6 +247,10 @@ func (conn *kafkaConnector) ConsumeClaim(session sarama.ConsumerGroupSession, cl
 				if success := conn.responseHandler(string(body), kafkaRecordHeaders); success {
 					session.MarkMessage(message, "")
 				}
+			}
+			err = resp.Body.Close()
+			if err != nil {
+				conn.logger.Error(err.Error())
 			}
 		}
 	}

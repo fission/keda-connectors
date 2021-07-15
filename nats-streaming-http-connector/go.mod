@@ -1,6 +1,6 @@
 module github.com/keda-connectors/nats-streaming-http-connector
 
-go 1.13
+go 1.15
 
 require (
 	github.com/fission/keda-connectors/common v0.0.0-20210309042017-cb9c10b94169

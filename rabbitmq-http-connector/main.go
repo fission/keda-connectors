@@ -72,7 +72,10 @@ func (conn rabbitMQConnector) consumeMessage() {
 						conn.errorHandler(err)
 					} else {
 						if success := conn.responseHandler(string(body)); success {
-							d.Ack(false)
+							err = d.Ack(false)
+							if err != nil {
+								conn.errorHandler(err)
+							}
 						}
 					}
 				}
@@ -144,7 +147,9 @@ func main() {
 	defer logger.Sync()
 
 	connectordata, err := common.ParseConnectorMetadata()
-
+	if err != nil {
+		logger.Fatal("error occurred while parsing connector metadata", zap.Error(err))
+	}
 	host := os.Getenv("HOST")
 	if os.Getenv("INCLUDE_UNACKED") == "true" {
 		logger.Fatal("only amqp protocol host is supported")

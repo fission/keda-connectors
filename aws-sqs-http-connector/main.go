@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
+
 	"github.com/fission/keda-connectors/common"
 )
 
@@ -79,7 +80,6 @@ func (conn awsSQSConnector) consumeMessage() {
 			if err != nil {
 				conn.errorHandler(errorQueueURL, err)
 			} else {
-				defer resp.Body.Close()
 				body, err := ioutil.ReadAll(resp.Body)
 				if err != nil {
 					conn.errorHandler(errorQueueURL, err)
@@ -97,6 +97,10 @@ func (conn awsSQSConnector) consumeMessage() {
 					if success := conn.responseHandler(respQueueURL, string(body), sqsMessageAttValue); success {
 						conn.deleteMessage(*message.ReceiptHandle, consQueueURL)
 					}
+				}
+				err = resp.Body.Close()
+				if err != nil {
+					conn.logger.Error("failed to close response body", zap.Error(err))
 				}
 			}
 		}
@@ -171,7 +175,9 @@ func main() {
 	defer logger.Sync()
 
 	connectordata, err := common.ParseConnectorMetadata()
-
+	if err != nil {
+		logger.Fatal("failed to parse connector metadata", zap.Error(err))
+	}
 	config, err := common.GetAwsConfig()
 	if err != nil {
 		logger.Error("failed to fetch aws config", zap.Error(err))

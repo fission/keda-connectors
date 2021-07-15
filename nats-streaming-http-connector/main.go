@@ -7,11 +7,12 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/fission/keda-connectors/common"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan.go"
 	"github.com/rs/xid"
 	"go.uber.org/zap"
+
+	"github.com/fission/keda-connectors/common"
 )
 
 type natsConnector struct {
@@ -46,7 +47,11 @@ func (conn natsConnector) consumeMessage() {
 				conn.errorHandler(err)
 			} else {
 				if success := conn.responseHandler(body); success {
-					m.Ack()
+					err = m.Ack()
+					if err != nil {
+						conn.logger.Info(err.Error())
+						conn.errorHandler(err)
+					}
 					conn.logger.Info("Done processing message",
 						zap.String("messsage", string(body)))
 				}
@@ -68,8 +73,14 @@ func (conn natsConnector) consumeMessage() {
 	go func() {
 		for range signalChan {
 			conn.logger.Info("Received an interrupt, unsubscribing and closing connection...")
-			sub.Unsubscribe()
-			conn.stanConnection.Close()
+			err = sub.Unsubscribe()
+			if err != nil {
+				conn.logger.Error("error occurred while unsubscribing", zap.Error(err))
+			}
+			err = conn.stanConnection.Close()
+			if err != nil {
+				conn.logger.Error("error occurred while closing connection", zap.Error(err))
+			}
 			forever <- true
 		}
 	}()
@@ -115,7 +126,9 @@ func main() {
 	defer logger.Sync()
 
 	connectordata, err := common.ParseConnectorMetadata()
-
+	if err != nil {
+		logger.Fatal("error occurred while parsing metadata", zap.Error(err))
+	}
 	host := os.Getenv("NATS_SERVER")
 
 	if host == "" {

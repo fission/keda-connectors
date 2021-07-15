@@ -7,7 +7,7 @@ import (
 )
 
 // Handler is the entry point for this fission function
-func Handler(w http.ResponseWriter, r *http.Request) {
+func Handler(w http.ResponseWriter, r *http.Request) { // nolint:unused,deadcode
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Error reading request body",
@@ -15,5 +15,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	results := string(body)
 	fmt.Println(results)
-	w.Write([]byte("Hello " + results))
+	_, err = w.Write([]byte("Hello " + results))
+	if err != nil {
+		http.Error(w, "Error writing response", http.StatusInternalServerError)
+	}
 }
