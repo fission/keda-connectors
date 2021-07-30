@@ -2,14 +2,16 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 
-	"github.com/fission/keda-connectors/common"
 	"github.com/go-redis/redis/v8"
 	"go.uber.org/zap"
+
+	"github.com/fission/keda-connectors/common"
 )
 
 type redisListConnector struct {
@@ -34,8 +36,8 @@ func (conn redisListConnector) consumeMessage(ctx context.Context) {
 
 	forever := make(chan bool)
 	go func() {
-		for message := range messages {
-			response, err := common.HandleHTTPRequest(string(message), headers, conn.connectordata, conn.logger)
+		for _, message := range messages {
+			response, err := common.HandleHTTPRequest(message, headers, conn.connectordata, conn.logger)
 			if err != nil {
 				conn.errorHandler(ctx, err)
 			} else {
@@ -45,7 +47,7 @@ func (conn redisListConnector) consumeMessage(ctx context.Context) {
 					conn.errorHandler(ctx, err)
 				} else {
 					if success := conn.responseHandler(ctx, string(body)); success {
-						//Ack
+						fmt.Println("Successful")
 					}
 				}
 			}
@@ -56,36 +58,36 @@ func (conn redisListConnector) consumeMessage(ctx context.Context) {
 }
 
 func (conn redisListConnector) errorHandler(ctx context.Context, err error) {
-    if len(conn.connectordata.ErrorTopic) > 0 {
-        err = conn.rdbConnection.RPush(ctx,conn.connectordata.ErrorTopic,err.Error()).Err()
-        if err != nil{
-            conn.logger.Error("Failed to add message in error topic list",
-                zap.Error(err),
-                zap.String("source",conn.connectordata.SourceName),
-                zap.String("message",err.Error()),
-                zap.String("topic",conn.connectordata.ErrorTopic))
-            }
-    } else{
-        conn.logger.Error("message received to add to error topic list, but no error topic was set",
-                zap.String("message",err.Error()),
-                zap.String("source",conn.connectordata.SourceName),
-                zap.String("http endpoint",conn.connectordata.HTTPEndpoint))
-    }
+	if len(conn.connectordata.ErrorTopic) > 0 {
+		err = conn.rdbConnection.RPush(ctx, conn.connectordata.ErrorTopic, err.Error()).Err()
+		if err != nil {
+			conn.logger.Error("Failed to add message in error topic list",
+				zap.Error(err),
+				zap.String("source", conn.connectordata.SourceName),
+				zap.String("message", err.Error()),
+				zap.String("topic", conn.connectordata.ErrorTopic))
+		}
+	} else {
+		conn.logger.Error("message received to add to error topic list, but no error topic was set",
+			zap.String("message", err.Error()),
+			zap.String("source", conn.connectordata.SourceName),
+			zap.String("http endpoint", conn.connectordata.HTTPEndpoint))
+	}
 }
 
-func (conn redisListConnector) responseHandler(ctx context.Context,response string) bool {
-    if len(conn.connectordata.ResponseTopic) > 0{
-        err := conn.rdbConnection.RPush(ctx, conn.connectordata.ResponseTopic,response).Err()
-        if err != nil{
-            conn.logger.Error("failed to push response to from http request to topic list",
-            zap.Error(err),
-            zap.String("topic",conn.connectordata.ResponseTopic),
-            zap.String("source",conn.connectordata.SourceName),
-            zap.String("http endpoint", conn.connectordata.HTTPEndpoint))
-            return false
-        }
-    }
-    return true
+func (conn redisListConnector) responseHandler(ctx context.Context, response string) bool {
+	if len(conn.connectordata.ResponseTopic) > 0 {
+		err := conn.rdbConnection.RPush(ctx, conn.connectordata.ResponseTopic, response).Err()
+		if err != nil {
+			conn.logger.Error("failed to push response to from http request to topic list",
+				zap.Error(err),
+				zap.String("topic", conn.connectordata.ResponseTopic),
+				zap.String("source", conn.connectordata.SourceName),
+				zap.String("http endpoint", conn.connectordata.HTTPEndpoint))
+			return false
+		}
+	}
+	return true
 }
 
 func main() {
@@ -96,7 +98,7 @@ func main() {
 	}
 	defer logger.Sync()
 
-	connectordata, err := common.ParseConnectorMetadata()
+	connectordata, _ := common.ParseConnectorMetadata()
 
 	address := os.Getenv("REDIS_ADDRESS")
 	if address == "" {
