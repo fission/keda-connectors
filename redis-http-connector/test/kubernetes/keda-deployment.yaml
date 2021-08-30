@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: keda-redis-connector
-          image: blackfly19/keda-redislist-http-connector:v5
+          image: blackfly19/keda-redis-http-connector:v5
           env:
             - name: TOPIC
               value: mylist

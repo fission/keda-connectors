@@ -29,8 +29,8 @@ jobs:
               - 'aws-kinesis-http-connector/version'
             gcp-pubsub-http-connector:
               - 'gcp-pubsub-http-connector/version'
-            redis-list-http-connector:
-              - 'redis-list-http-connector/version'
+            redis-http-connector:
+              - 'redis-http-connector/version'
   run-docker-build-push-action:
     needs: check
     strategy:

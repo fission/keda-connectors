@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -14,13 +13,13 @@ import (
 	"github.com/fission/keda-connectors/common"
 )
 
-type redisListConnector struct {
+type redisConnector struct {
 	rdbConnection *redis.Client
 	connectordata common.ConnectorMetadata
 	logger        *zap.Logger
 }
 
-func (conn redisListConnector) consumeMessage(ctx context.Context) {
+func (conn redisConnector) consumeMessage(ctx context.Context) {
 
 	headers := http.Header{
 		"KEDA-Topic":          {conn.connectordata.Topic},
@@ -31,17 +30,19 @@ func (conn redisListConnector) consumeMessage(ctx context.Context) {
 	}
 
 	var messages []string
-	var i int64
+	var listItr int64
 	forever := make(chan bool)
 
 	go func() {
-		list_len, _ := conn.rdbConnection.LLen(ctx, conn.connectordata.Topic).Result()
-		for i = 0; i < list_len; i++ {
+		listLength, err := conn.rdbConnection.LLen(ctx, conn.connectordata.Topic).Result()
+		if err != nil {
+			conn.logger.Fatal("Error in consuming queue: ", zap.Error(err))
+		}
+		for listItr = 0; listItr < listLength; listItr++ {
 			msg, err := conn.rdbConnection.LPop(ctx, conn.connectordata.Topic).Result()
 			if err != nil {
 				conn.logger.Fatal("Error in consuming queue: ", zap.Error((err)))
 			}
-			fmt.Println(msg)
 			messages = append(messages, msg)
 		}
 		for _, message := range messages {
@@ -65,11 +66,11 @@ func (conn redisListConnector) consumeMessage(ctx context.Context) {
 	<-forever
 }
 
-func (conn redisListConnector) errorHandler(ctx context.Context, err error) {
+func (conn redisConnector) errorHandler(ctx context.Context, err error) {
 	if len(conn.connectordata.ErrorTopic) > 0 {
 		err = conn.rdbConnection.RPush(ctx, conn.connectordata.ErrorTopic, err.Error()).Err()
 		if err != nil {
-			conn.logger.Error("Failed to add message in error topic list",
+			conn.logger.Error("Failed to add message in error topic",
 				zap.Error(err),
 				zap.String("source", conn.connectordata.SourceName),
 				zap.String("message", err.Error()),
@@ -83,11 +84,11 @@ func (conn redisListConnector) errorHandler(ctx context.Context, err error) {
 	}
 }
 
-func (conn redisListConnector) responseHandler(ctx context.Context, response string) bool {
+func (conn redisConnector) responseHandler(ctx context.Context, response string) bool {
 	if len(conn.connectordata.ResponseTopic) > 0 {
 		err := conn.rdbConnection.RPush(ctx, conn.connectordata.ResponseTopic, response).Err()
 		if err != nil {
-			conn.logger.Error("failed to push response to from http request to topic list",
+			conn.logger.Error("failed to push response to from http request to topic",
 				zap.Error(err),
 				zap.String("topic", conn.connectordata.ResponseTopic),
 				zap.String("source", conn.connectordata.SourceName),
@@ -120,7 +121,7 @@ func main() {
 		Password: password,
 	})
 
-	conn := redisListConnector{
+	conn := redisConnector{
 		rdbConnection: rdb,
 		connectordata: connectordata,
 		logger:        logger,

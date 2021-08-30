@@ -1,4 +1,4 @@
-module github.com/fission/keda-connectors/redisList
+module github.com/fission/keda-connectors/redis
 
 go 1.15
 

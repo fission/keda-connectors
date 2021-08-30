@@ -25,7 +25,7 @@ func main() {
 		Password: password,
 	})
 
-	list_len, _ := rdb.LLen(ctx, "response-topic").Result()
+	list_len, err := rdb.LLen(ctx, "response-topic").Result()
 
 	for i = 0; i < list_len; i++ {
 		msg, err := rdb.LPop(ctx, "response-topic").Result()
