@@ -1,0 +1,16 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: redis-scaledobject
+  namespace: default
+  labels:
+    keda: redis
+spec:
+  scaleTargetRef:
+    name: redis-deployment
+  pollingInterval: 30
+  triggers:
+    - type: redis
+      metadata:
+        address: 172.18.0.2:31032
+        listName: mylist

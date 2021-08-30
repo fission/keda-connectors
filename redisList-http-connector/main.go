@@ -22,10 +22,6 @@ type redisListConnector struct {
 
 func (conn redisListConnector) consumeMessage(ctx context.Context) {
 
-	messages, err := conn.rdbConnection.LRange(ctx, conn.connectordata.Topic, 0, -1).Result()
-	if err != nil {
-		conn.logger.Fatal("Error in redis list consumer", zap.Error(err))
-	}
 	headers := http.Header{
 		"KEDA-Topic":          {conn.connectordata.Topic},
 		"KEDA-Response-Topic": {conn.connectordata.ResponseTopic},
@@ -34,8 +30,20 @@ func (conn redisListConnector) consumeMessage(ctx context.Context) {
 		"KEDA-Source-Name":    {conn.connectordata.SourceName},
 	}
 
+	var messages []string
+	var i int64
 	forever := make(chan bool)
+
 	go func() {
+		list_len, _ := conn.rdbConnection.LLen(ctx, conn.connectordata.Topic).Result()
+		for i = 0; i < list_len; i++ {
+			msg, err := conn.rdbConnection.LPop(ctx, conn.connectordata.Topic).Result()
+			if err != nil {
+				conn.logger.Fatal("Error in consuming queue: ", zap.Error((err)))
+			}
+			fmt.Println(msg)
+			messages = append(messages, msg)
+		}
 		for _, message := range messages {
 			response, err := common.HandleHTTPRequest(message, headers, conn.connectordata, conn.logger)
 			if err != nil {
@@ -47,7 +55,7 @@ func (conn redisListConnector) consumeMessage(ctx context.Context) {
 					conn.errorHandler(ctx, err)
 				} else {
 					if success := conn.responseHandler(ctx, string(body)); success {
-						fmt.Println("Successful")
+						conn.logger.Info("Message sending to response successful")
 					}
 				}
 			}
@@ -100,11 +108,11 @@ func main() {
 
 	connectordata, _ := common.ParseConnectorMetadata()
 
-	address := os.Getenv("REDIS_ADDRESS")
+	address := os.Getenv("ADDRESS")
 	if address == "" {
 		logger.Fatal("Empty address field")
 	}
-	password := os.Getenv("REDIS_PASSWORD")
+	password := os.Getenv("PASSWORD_FROM_ENV")
 
 	var ctx = context.Background()
 	rdb := redis.NewClient(&redis.Options{
