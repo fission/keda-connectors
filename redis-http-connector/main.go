@@ -107,7 +107,10 @@ func main() {
 	}
 	defer logger.Sync()
 
-	connectordata, _ := common.ParseConnectorMetadata()
+	connectordata, err := common.ParseConnectorMetadata()
+	if err != nil {
+		logger.Error("Error while parsing connector metadata", zap.Error(err))
+	}
 
 	address := os.Getenv("ADDRESS")
 	if address == "" {

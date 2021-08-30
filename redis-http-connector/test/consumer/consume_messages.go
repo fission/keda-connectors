@@ -4,30 +4,32 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/go-redis/redis/v8"
 )
 
 func main() {
 
-	/*address := os.Getenv("REDIS_ADDRESS")
+	address := os.Getenv("REDIS_ADDRESS")
 	if address == "" {
 		log.Fatalf("Empty address field")
 	}
-	password := os.Getenv("REDIS_PASSWORD")*/
-	address := "127.0.0.1:6379"
-	password := ""
+	password := os.Getenv("REDIS_PASSWORD")
 
 	var ctx = context.Background()
-	var i int64
+	var listItr int64
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     address,
 		Password: password,
 	})
 
-	list_len, err := rdb.LLen(ctx, "response-topic").Result()
+	listLength, err := rdb.LLen(ctx, "response-topic").Result()
+	if err != nil {
+		log.Fatalf("Error in consuming queue: %v", err)
+	}
 
-	for i = 0; i < list_len; i++ {
+	for listItr = 0; listItr < listLength; listItr++ {
 		msg, err := rdb.LPop(ctx, "response-topic").Result()
 
 		if err != nil {
