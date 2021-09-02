@@ -1,0 +1,7 @@
+externalService:
+  enabled: true
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-internal: 0.0.0.0/0
+  serviceType: NodePort
+  port: 6379
+

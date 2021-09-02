@@ -4,18 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/go-redis/redis/v8"
 )
 
 func main() {
 
-	address := os.Getenv("REDIS_ADDRESS")
-	if address == "" {
-		log.Fatalf("Empty address field")
-	}
-	password := os.Getenv("REDIS_PASSWORD")
+	address := "redis-headless.ot-operators.svc.cluster.local:6379"
+	password := ""
 
 	var ctx = context.Background()
 	var listItr int64
@@ -24,13 +20,13 @@ func main() {
 		Password: password,
 	})
 
-	listLength, err := rdb.LLen(ctx, "response-topic").Result()
+	listLength, err := rdb.LLen(ctx, "request-topic").Result()
 	if err != nil {
 		log.Fatalf("Error in consuming queue: %v", err)
 	}
 
 	for listItr = 0; listItr < listLength; listItr++ {
-		msg, err := rdb.LPop(ctx, "response-topic").Result()
+		msg, err := rdb.LPop(ctx, "request-topic").Result()
 
 		if err != nil {
 			log.Fatalf("Error in consuming queue: %v", err)
@@ -38,5 +34,5 @@ func main() {
 		}
 		fmt.Println(msg)
 	}
-
+	fmt.Println("Messages consumed!")
 }

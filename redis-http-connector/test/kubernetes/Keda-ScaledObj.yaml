@@ -12,5 +12,6 @@ spec:
   triggers:
     - type: redis
       metadata:
-        address: 172.18.0.2:31032
-        listName: mylist
+        address: redis-headless.ot-operators.svc.cluster.local:6379
+        listName: request-topic
+        listLength: "10"

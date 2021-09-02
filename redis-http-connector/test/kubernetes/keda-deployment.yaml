@@ -20,7 +20,7 @@ spec:
           image: blackfly19/keda-redis-http-connector:v5
           env:
             - name: TOPIC
-              value: mylist
+              value: request-topic
             - name: HTTP_ENDPOINT
               value: http://http-service.default.svc.cluster.local:8080/post
             - name: ERROR_TOPIC
@@ -32,4 +32,4 @@ spec:
             - name: MAX_RETRIES
               value: "3"
             - name: REDIS_HOST
-              value: "172.18.0.2:31032"
+              value: redis-headless.ot-operators.svc.cluster.local:6379

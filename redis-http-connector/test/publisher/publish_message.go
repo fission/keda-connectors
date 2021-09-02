@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"strconv"
 	"time"
 
@@ -20,11 +19,8 @@ type publish_data struct {
 
 func main() {
 
-	address := os.Getenv("REDIS_ADDRESS")
-	if address == "" {
-		log.Fatalf("Empty address field")
-	}
-	password := os.Getenv("REDIS_PASSWORD")
+	address := "redis-headless.ot-operators.svc.cluster.local:6379"
+	password := ""
 
 	var ctx = context.Background()
 	rdb := redis.NewClient(&redis.Options{
@@ -41,7 +37,7 @@ func main() {
 			Time: secs,
 		}
 		resp_json, _ := json.Marshal(resp)
-		_, err := rdb.RPush(ctx, "test_queue", resp_json).Result()
+		_, err := rdb.RPush(ctx, "request-topic", resp_json).Result()
 		if err != nil {
 			log.Fatalf("Error publishing messages: %v", err)
 			panic(err.Error())
