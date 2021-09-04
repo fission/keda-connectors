@@ -14,7 +14,7 @@ RUN go mod download
 COPY . .
 
 RUN go build -a -o /go/bin/main
-FROM alpine:3.12 as base
+FROM alpine:3.14 as base
 RUN apk add --update ca-certificates
 COPY --from=builder /go/bin/main /
 

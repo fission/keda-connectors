@@ -1,4 +1,4 @@
-FROM golang:1.12-alpine
+FROM golang:1.15-alpine
 RUN mkdir /server
 WORKDIR /server
 COPY . .
