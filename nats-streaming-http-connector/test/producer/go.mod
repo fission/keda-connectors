@@ -1,6 +1,6 @@
 module github.com/keda-connectors/nats-streaming-http-connector/test/producer
 
-go 1.13
+go 1.15
 
 require (
 	github.com/golang/protobuf v1.4.2 // indirect

@@ -36,11 +36,12 @@ jobs:
     if: contains(needs.check.outputs.packages, 'kafkachanges')
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout the current repo
+        uses: actions/checkout@v2
       - name: Install Kind Cluster
-        run: |
-          curl -Lo ./kind $KIND_URL/$KIND_VER/$KIND_ENV      
-          chmod +x ./kind
-          sudo mv ./kind /usr/bin/
+        uses: engineerd/setup-kind@v0.5.0
+        with:
+          version: v0.11.1
       - name: Install KEDA using HELM
         run: |
           cd test/
@@ -57,19 +58,16 @@ jobs:
           kubectl apply -f server.yaml
           kubectl wait pod -l app=http --for=condition=ready --timeout=-1s
       - name: Create Docker Image for Kafka KEDA Connector
-        if: steps.filter.outputs.kafkachanges == 'true'
         run: |
           cd kafka-http-connector/
           docker build -t localhost:5000/kafka-connector:latest .
           docker push localhost:5000/kafka-connector:latest
       - name: Create Kafka Docker Image for Consumer
-        if: steps.filter.outputs.kafkachanges == 'true'
         run: |
           cd kafka-http-connector/test/consumer/
           docker build -t localhost:5000/consumer:latest .
           docker push localhost:5000/consumer:latest
       - name: Deploy Kafka cluster
-        if: steps.filter.outputs.kafkachanges == 'true'
         run: |
           cd kafka-http-connector/test/kubernetes/
           kubectl create namespace kafka
@@ -82,14 +80,12 @@ jobs:
           kubectl get pods -n kafka
           kubectl wait pod -l app.kubernetes.io/name=zookeeper --for=condition=ready --timeout=-1s -n kafka
       - name: Create Kafka topics
-        if: steps.filter.outputs.kafkachanges == 'true'
         run: |
           cd kafka-http-connector/test/kubernetes/
           kubectl apply -f kafka-req-topic.yaml
           kubectl apply -f kafka-err-topic.yaml
           kubectl apply -f kafka-res-topic.yaml
       - name: Deploy Kafka Keda Connector and Keda ScaledObject
-        if: steps.filter.outputs.kafkachanges == 'true'
         run: |
           cd kafka-http-connector/test/kubernetes/ 
           kubectl apply -f keda-deployment.yml
@@ -100,14 +96,12 @@ jobs:
           kubectl wait pod -l keda=kafka --for=condition=ready --timeout=30s -n kafka
           kubectl apply -f Keda-ScaledObj.yml
       - name: Produce Kafka messages Using Producer
-        if: steps.filter.outputs.kafkachanges == 'true'
         run: |
           cd kafka-http-connector/test/kubernetes/
           kubectl apply -f kafka-produer.yaml -n kafka
           kubectl wait -f kafka-produer.yaml --for=condition=complete --timeout=-1s -n kafka
           kubectl delete job pi -n kafka
       - name: Collect Kafka Consumer Messages
-        if: steps.filter.outputs.kafkachanges == 'true'
         run: |
           kubectl get pods -n kafka
           cd kafka-http-connector/test/consumer/
@@ -119,11 +113,12 @@ jobs:
     if: contains(needs.check.outputs.packages, 'rabbitmqchanges')
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout the current repo
+        uses: actions/checkout@v2
       - name: Install Kind Cluster
-        run: |
-          curl -Lo ./kind $KIND_URL/$KIND_VER/$KIND_ENV      
-          chmod +x ./kind
-          sudo mv ./kind /usr/bin/
+        uses: engineerd/setup-kind@v0.5.0
+        with:
+          version: v0.11.1
       - name: Install KEDA using HELM
         run: |
           cd test/
@@ -133,25 +128,21 @@ jobs:
           kubectl create namespace keda
           helm install keda kedacore/keda --namespace keda
       - name: Create Docker Image for Rabbitmq KEDA Connector
-        if: steps.filter.outputs.rabbitmqchanges == 'true'
         run: |
           cd rabbitmq-http-connector/
           docker build -t localhost:5000/rabbit-keda:latest .
           docker push localhost:5000/rabbit-keda:latest
       - name: Create Rabbitmq Docker Image for Publisher
-        if: steps.filter.outputs.rabbitmqchanges == 'true'
         run: |
           cd rabbitmq-http-connector/test/publisher/
           docker build -t localhost:5000/rabbit-publisher:latest .
           docker push localhost:5000/rabbit-publisher:latest
       - name: Create Rabbitmq Docker Image for Consumer
-        if: steps.filter.outputs.rabbitmqchanges == 'true'
         run: |
           cd rabbitmq-http-connector/test/consumer/
           docker build -t localhost:5000/rabbit-consumer:latest .
           docker push localhost:5000/rabbit-consumer:latest
       - name: Deploy Rabbitmq Deployment files
-        if: steps.filter.outputs.rabbitmqchanges == 'true'
         run: |
           cd rabbitmq-http-connector/test/kubernetes/
           kubectl create ns rabbits
@@ -161,25 +152,21 @@ jobs:
           kubectl apply -n rabbits -f rabbit-statefulset.yaml
           bash rabbitmq-cluster-instances.sh
       - name: Publish Rabbitmq messages in a queue
-        if: steps.filter.outputs.rabbitmqchanges == 'true'
         run: |
           cd rabbitmq-http-connector/test/publisher/
           kubectl apply -f deployment.yaml
           kubectl apply -f publisher-job.yaml
       - name: Bring up the Rabbitmq consumer queue and Listen for incoming messages
-        if: steps.filter.outputs.rabbitmqchanges == 'true'
         run: |
           cd rabbitmq-http-connector/test/consumer/
           kubectl apply -f consumer-deployment.yaml
       - name: Deploy Rabbitmq Keda Connector and Keda ScaledObject
-        if: steps.filter.outputs.rabbitmqchanges == 'true'
         run: |
           cd rabbitmq-http-connector/test/kubernetes/
           kubectl apply -f keda-deployment.yml
           kubectl wait pod -l keda=rabbitmq --for=condition=ready --timeout=-1s -n rabbits
           kubectl apply -f Keda-ScaledObj.yml
       - name: Get Rabbitmq consumed messages from queue
-        if: steps.filter.outputs.rabbitmqchanges == 'true'
         run: |
           sleep 10s
           kubectl logs  -n rabbits deployment.apps/rabbitmq-consumer
@@ -188,11 +175,12 @@ jobs:
     if: contains(needs.check.outputs.packages, 'sqschanges')
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout the current repo
+        uses: actions/checkout@v2
       - name: Install Kind Cluster
-        run: |
-          curl -Lo ./kind $KIND_URL/$KIND_VER/$KIND_ENV      
-          chmod +x ./kind
-          sudo mv ./kind /usr/bin/
+        uses: engineerd/setup-kind@v0.5.0
+        with:
+          version: v0.11.1
       - name: Install KEDA using HELM
         run: |
           cd test/
@@ -200,27 +188,24 @@ jobs:
           helm repo add kedacore https://kedacore.github.io/charts
           helm repo update
           kubectl create namespace keda
+          helm install keda kedacore/keda --namespace keda
       - name: Create Docker Image for SQS KEDA Connector
-        if: steps.filter.outputs.sqschanges == 'true'
         run: |
           cd aws-sqs-http-connector
           docker build -t localhost:5000/aws-sqs-connector:latest .
           docker push localhost:5000/aws-sqs-connector:latest
       - name: Create SQS Docker image with AWS CLI in KEDA Connetor
-        if: steps.filter.outputs.sqschanges == 'true'
         run: |
           cd aws-sqs-http-connector/test/kubernetes 
           docker build -t localhost:5000/aws-sqs-test-connector:latest .
           docker push localhost:5000/aws-sqs-test-connector:latest
       - name: Deploy SQS Keda Connector, Keda ScaledObject and Localstack
-        if: steps.filter.outputs.sqschanges == 'true'
         run: |
           cd aws-sqs-http-connector/test/kubernetes 
           kubectl apply -f keda-deployment.yml
           kubectl apply -f keda-scaledObj.yml
           kubectl apply -f localstack.yaml
       - name: Build and Deploy SQS test queue
-        if: steps.filter.outputs.sqschanges == 'true'
         run: |
           cd aws-sqs-http-connector/test/validate
           docker build -t localhost:5000/test-queue:latest .
@@ -230,7 +215,6 @@ jobs:
           kubectl get pods
           kubectl wait pod -l app=queue --for=condition=ready --timeout=200s
       - name: Get SQS consumed messages from queue
-        if: steps.filter.outputs.sqschanges == 'true'
         run: |
           sleep 30s
           kubectl logs -l app=queue
@@ -242,10 +226,9 @@ jobs:
       - name: Checkout the current repo
         uses: actions/checkout@v2
       - name: Install Kind Cluster
-        run: |
-          curl -Lo ./kind $KIND_URL/$KIND_VER/$KIND_ENV      
-          chmod +x ./kind
-          sudo mv ./kind /usr/bin/
+        uses: engineerd/setup-kind@v0.5.0
+        with:
+          version: v0.11.1
       - name: Install KEDA using HELM
         run: |
           cd test/
