@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-deployment
+  namespace: default
+  labels:
+    keda: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      keda: redis
+  template:
+    metadata:
+      labels:
+        keda: redis
+    spec:
+      containers:
+        - name: keda-redis-connector
+          image: blackfly19/keda-redis-http-connector:v5
+          env:
+            - name: TOPIC
+              value: request-topic
+            - name: HTTP_ENDPOINT
+              value: http://http-service.default.svc.cluster.local:8080/post
+            - name: ERROR_TOPIC
+              value: error-topic
+            - name: RESPONSE_TOPIC
+              value: response-topic
+            - name: CONTENT_TYPE
+              value: application/json
+            - name: MAX_RETRIES
+              value: "3"
+            - name: REDIS_HOST
+              value: redis-headless.ot-operators.svc.cluster.local:6379

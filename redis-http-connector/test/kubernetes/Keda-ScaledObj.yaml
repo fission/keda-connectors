@@ -1,0 +1,17 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: redis-scaledobject
+  namespace: default
+  labels:
+    keda: redis
+spec:
+  scaleTargetRef:
+    name: redis-deployment
+  pollingInterval: 30
+  triggers:
+    - type: redis
+      metadata:
+        address: redis-headless.ot-operators.svc.cluster.local:6379
+        listName: request-topic
+        listLength: "10"

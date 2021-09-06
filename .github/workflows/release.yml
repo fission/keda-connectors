@@ -4,7 +4,7 @@ on:
     branches:
       - master
     paths:
-      - '**/version'
+      - "**/version"
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -29,25 +29,27 @@ jobs:
               - 'aws-kinesis-http-connector/version'
             gcp-pubsub-http-connector:
               - 'gcp-pubsub-http-connector/version'
+            redis-http-connector:
+              - 'redis-http-connector/version'
   run-docker-build-push-action:
     needs: check
     strategy:
       matrix:
-       run: ${{ fromJSON(needs.check.outputs.packages) }}
+        run: ${{ fromJSON(needs.check.outputs.packages) }}
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout sources
-      uses: actions/checkout@v2
-    - name: get version
-      run: cd ${{ matrix.run }}; version=$(cat version);echo "version=$version" >> $GITHUB_ENV
-    - name: Login to DockerHub
-      uses: docker/login-action@v1
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Build and Push the docker image
-      uses: docker/build-push-action@v2
-      with:
-        context: ${{ matrix.run }}
-        tags: fission/keda-${{ matrix.run }}:latest,fission/keda-${{ matrix.run }}:${{env.version}}
-        push: true
+      - name: Checkout sources
+        uses: actions/checkout@v2
+      - name: get version
+        run: cd ${{ matrix.run }}; version=$(cat version);echo "version=$version" >> $GITHUB_ENV
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and Push the docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: ${{ matrix.run }}
+          tags: fission/keda-${{ matrix.run }}:latest,fission/keda-${{ matrix.run }}:${{env.version}}
+          push: true
