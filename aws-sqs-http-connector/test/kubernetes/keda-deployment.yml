@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: keda-deployment
+  name: sqs-deployment
   labels:
     keda: sqs
 spec:
@@ -15,24 +15,24 @@ spec:
         keda: sqs
     spec:
       containers:
-      - name: keda-sqs-connector
-        image: localhost:5000/aws-sqs-test-connector:latest
-        env:
-          - name: TOPIC
-            value: my_queue
-          - name: HTTP_ENDPOINT
-            value: http://http-service.default.svc.cluster.local:8080/post
-          - name: ERROR_TOPIC
-            value: errorTopic
-          - name: RESPONSE_TOPIC
-            value: responseTopic
-          - name: CONTENT_TYPE
-            value: application/json
-          - name: MAX_RETRIES
-            value: "3"
-          - name: AWS_SQS_URL
-            value: http://localstack:31000/queue/
-          - name: AWS_REGION
-            value: us-east-1
-          - name: AWS_ENDPOINT
-            value: http://localstack:31000
+        - name: keda-sqs-connector
+          image: localhost:5000/aws-sqs-test-connector:latest
+          env:
+            - name: TOPIC
+              value: my_queue
+            - name: HTTP_ENDPOINT
+              value: http://http-service.default.svc.cluster.local:8080/post
+            - name: ERROR_TOPIC
+              value: errorTopic
+            - name: RESPONSE_TOPIC
+              value: responseTopic
+            - name: CONTENT_TYPE
+              value: application/json
+            - name: MAX_RETRIES
+              value: "3"
+            - name: AWS_SQS_URL
+              value: http://localstack:31000/queue/
+            - name: AWS_REGION
+              value: us-east-1
+            - name: AWS_ENDPOINT
+              value: http://localstack:31000
