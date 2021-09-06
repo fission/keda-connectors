@@ -7,8 +7,8 @@ spec:
   kafka:
     replicas: 1
     listeners:
-      plain: {}
-      tls: {}
+      name: plain
+      port: 9092
       external:
         type: nodeport
         tls: false

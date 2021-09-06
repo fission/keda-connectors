@@ -191,6 +191,7 @@ jobs:
           helm repo add kedacore https://kedacore.github.io/charts
           helm repo update
           kubectl create namespace keda
+          helm install keda kedacore/keda --namespace keda
       - name: Create Docker Image for SQS KEDA Connector
         run: |
           cd aws-sqs-http-connector
