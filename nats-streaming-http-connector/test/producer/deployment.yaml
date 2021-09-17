@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  name: producer-deployment
+  namespace: default
   labels:
-    app: nats-pub
-  name: nats-pub
+    app: producer
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
-      app: nats-pub
+      app: producer
   template:
     metadata:
       labels:
-        app: nats-pub
+        app: producer
     spec:
       containers:
-        - image: localhost:5000/nats-producer:latest
-          imagePullPolicy: Never
-          name: producer
+        - name: producer
+          image: localhost:5000/nats-publisher:latest
