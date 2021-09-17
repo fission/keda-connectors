@@ -12,8 +12,8 @@ spec:
   triggers:
     - type: stan
       metadata:
-        natsServerMonitoringEndpoint: nats://nats:4222
-        queueGroup: grp1
+        natsServerMonitoringEndpoint: my-stan.default.svc.cluster.local:8222
         durableName: ImDurable
-        subject: Test
+        queueGroup: grp1
+        subject: request-topic
         lagThreshold: "10"

@@ -296,6 +296,13 @@ jobs:
         uses: engineerd/setup-kind@v0.5.0
         with:
           version: v0.11.1
+      - name: Create Docker Image for HTTP server
+        run: |
+          cd test/server/
+          docker build -t localhost:5000/http-server:latest .
+          docker push localhost:5000/http-server:latest
+          kubectl apply -f server.yaml
+          kubectl wait pod -l app=http --for=condition=ready --timeout=-1s
       - name: Install KEDA using HELM
         run: |
           cd test/
@@ -328,14 +335,6 @@ jobs:
           helm install my-stan nats/stan --set stan.nats.url=nats://nats:4222
           sleep 30s
           kubectl get pods
-      - name: Publish Nats messages in a queue
-        run: |
-          cd nats-streaming-http-connector/test/producer/
-          kubectl apply -f deployment.yaml
-      - name: Bring up the Nats consumer queue and Listen for incoming messages
-        run: |
-          cd nats-streaming-http-connector/test/consumer/
-          kubectl apply -f deployment.yaml
       - name: Deploy Nats Keda Connector and Keda ScaledObject
         run: |
           cd nats-streaming-http-connector/test/kubernetes/ 
@@ -343,6 +342,15 @@ jobs:
           sleep 30s
           kubectl apply -f keda-ScaledObject.yaml
           sleep 30s
+      - name: Publish Nats messages in a queue
+        run: |
+          cd nats-streaming-http-connector/test/producer/
+          kubectl apply -f deployment.yaml
+          sleep 20s
+      - name: Bring up the Nats consumer queue and Listen for incoming messages
+        run: |
+          cd nats-streaming-http-connector/test/consumer/
+          kubectl apply -f deployment.yaml
       - name: Get Nats consumed messages from queue
         run: |
           sleep 30s

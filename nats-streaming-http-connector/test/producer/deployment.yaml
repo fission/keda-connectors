@@ -17,4 +17,4 @@ spec:
     spec:
       containers:
         - name: producer
-          image: localhost:5000/nats-publisher:latest
+          image: localhost:5000/nats-producer:latest

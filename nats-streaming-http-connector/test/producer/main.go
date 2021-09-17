@@ -14,7 +14,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	sc, err := stan.Connect("test-cluster", "stan-sub", stan.NatsConn(nc))
+	sc, err := stan.Connect("my-stan", "stan-sub", stan.NatsConn(nc))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -22,6 +22,7 @@ func main() {
 		sc.Publish("request-topic", []byte("Test"+strconv.Itoa(i)))
 	}
 	fmt.Println("Published all the messages")
+	sc.Close()
 	// sc.QueueSubscribe("response", "grp1", func(m *stan.Msg) {
 	// 	log.Printf("[Received] %+v", m)
 	// }, stan.DurableName("due"), stan.DeliverAllAvailable())

@@ -13,16 +13,22 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	sc, err := stan.Connect("test-cluster", "stan-sub", stan.NatsConn(nc))
+	sc, err := stan.Connect("my-stan", "stan-sub", stan.NatsConn(nc))
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = sc.QueueSubscribe("response-topic", "grp1", func(m *stan.Msg) {
+	sub, err := sc.QueueSubscribe("response-topic", "grp1", func(m *stan.Msg) {
 		msg := string(m.Data)
-		log.Printf("%v", msg)
+		fmt.Println(msg)
 	}, stan.DurableName("ImDurable"), stan.DeliverAllAvailable())
 	if err != nil {
 		log.Fatal(err)
 	}
+	err = sub.Unsubscribe()
+	if err != nil {
+		log.Fatal(err)
+	}
+	sc.Close()
 	fmt.Println("All messages consumed")
+	select {}
 }

@@ -38,4 +38,4 @@ spec:
             - name: DURABLE_NAME
               value: ImDurable
             - name: CLUSTER_ID
-              value: test-cluster
+              value: my-stan
