@@ -12,7 +12,7 @@ spec:
   triggers:
     - type: stan
       metadata:
-        natsServerMonitoringEndpoint: stan-nats-ss.stan.svc.cluster.local:8222
+        natsServerMonitoringEndpoint: nats://nats:4222
         queueGroup: grp1
         durableName: ImDurable
         subject: Test

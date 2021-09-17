@@ -31,5 +31,11 @@ spec:
               value: application/json
             - name: MAX_RETRIES
               value: "3"
-            - name: NATS_SERVER_MONITORING_ENDPOINT
-              value: stan-nats-ss.stan.svc.cluster.local:8222
+            - name: NATS_SERVER
+              value: nats://nats:4222
+            - name: QUEUE_GROUP
+              value: grp1
+            - name: DURABLE_NAME
+              value: ImDurable
+            - name: CLUSTER_ID
+              value: test-cluster
