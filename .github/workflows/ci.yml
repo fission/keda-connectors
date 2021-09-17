@@ -339,7 +339,7 @@ jobs:
       - name: Deploy Nats Keda Connector and Keda ScaledObject
         run: |
           cd nats-streaming-http-connector/test/kubernetes/ 
-          kubectl apply -f keda-deployment.yaml
+          kubectl apply -f Keda-deployment.yaml
           sleep 30s
           kubectl apply -f keda-ScaledObject.yaml
           sleep 30s
