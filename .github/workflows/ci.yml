@@ -31,6 +31,9 @@ jobs:
               - 'aws-sqs-http-connector/**' 
             redischanges:
               - 'redis-http-connector/**'
+            natschanges:
+              - 'nats-streaming-http-connector/**'
+
   kafka:
     needs: check
     if: contains(needs.check.outputs.packages, 'kafkachanges')
@@ -282,3 +285,67 @@ jobs:
         run: |
           sleep 30s
           kubectl logs deployment.apps/consumer-deployment
+  nats:
+    needs: check
+    if: contains(needs.check.outputs.packages, 'natschanges')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the current repo
+        uses: actions/checkout@v2
+      - name: Install Kind Cluster
+        uses: engineerd/setup-kind@v0.5.0
+        with:
+          version: v0.11.1
+      - name: Install KEDA using HELM
+        run: |
+          cd test/
+          ./registry.sh
+          helm repo add kedacore https://kedacore.github.io/charts
+          helm repo update
+          kubectl create namespace keda
+          helm install keda kedacore/keda --namespace keda
+      - name: Create Docker Image for Nats KEDA Connector
+        run: |
+          cd nats-streaming-http-connector/
+          docker build -t localhost:5000/nats-connector:latest .
+          docker push localhost:5000/nats-connector:latest
+      - name: Create Nats Docker Image for Publisher
+        run: |
+          cd nats-streaming-http-connector/test/producer/
+          docker build -t localhost:5000/nats-producer:latest .
+          docker push localhost:5000/nats-producer:latest
+      - name: Create Nats Docker Image for Consumer
+        run: |
+          cd nats-streaming-http-connector/test/consumer/
+          docker build -t localhost:5000/nats-consumer:latest .
+          docker push localhost:5000/nats-consumer:latest
+      - name: Deploy Redis cluster
+        run: |
+          cd nats-streaming-http-connector/test/kubernetes/
+          kubectl apply -f https://github.com/nats-io/nats-operator/releases/download/v0.7.4/00-prereqs.yaml
+          kubectl apply -f https://github.com/nats-io/nats-operator/releases/download/v0.7.4/10-deployment.yaml
+
+          kubectl apply -f https://raw.githubusercontent.com/nats-io/nats-streaming-operator/main/deploy/default-rbac.yaml
+          kubectl apply -f https://raw.githubusercontent.com/nats-io/nats-streaming-operator/main/deploy/deployment.yaml
+          sleep 30s
+          kubectl apply -f nats-cluster.yaml
+          sleep 30s
+      - name: Publish Nats messages in a queue
+        run: |
+          cd nats-streaming-http-connector/test/producer/
+          kubectl apply -f deployment.yaml
+      - name: Bring up the Nats consumer queue and Listen for incoming messages
+        run: |
+          cd nats-streaming-http-connector/test/consumer/
+          kubectl apply -f deployment.yaml
+      - name: Deploy Nats Keda Connector and Keda ScaledObject
+        run: |
+          cd nats-streaming-http-connector/test/kubernetes/ 
+          kubectl apply -f keda-deployment.yaml
+          sleep 30s
+          kubectl apply -f keda-ScaledObj.yaml
+          sleep 30s
+      - name: Get Nats consumed messages from queue
+        run: |
+          sleep 30s
+          kubectl logs deployment.apps/nats-con

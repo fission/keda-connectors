@@ -1,0 +1,19 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: nats-scaledobject
+  namespace: default
+  labels:
+    keda: nats
+spec:
+  pollingInterval: 30
+  scaleTargetRef:
+    name: nats-streaming-deployment
+  triggers:
+    - type: stan
+      metadata:
+        natsServerMonitoringEndpoint: stan-nats-ss.stan.svc.cluster.local:8222
+        queueGroup: grp1
+        durableName: ImDurable
+        subject: Test
+        lagThreshold: "10"

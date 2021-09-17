@@ -18,8 +18,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	for i := 100; i < 500; i++ {
-		sc.Publish("hello", []byte("Test"+strconv.Itoa(i)))
+	for i := 0; i < 100; i++ {
+		sc.Publish("request-topic", []byte("Test"+strconv.Itoa(i)))
 	}
 	fmt.Println("Published all the messages")
 	// sc.QueueSubscribe("response", "grp1", func(m *stan.Msg) {

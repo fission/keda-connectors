@@ -1,0 +1,8 @@
+apiVersion: streaming.nats.io/v1alpha1
+kind: NatsStreamingCluster
+metadata:
+  name: test-cluster
+spec:
+  size: 3
+  natsSvc: nats
+  config: {}
