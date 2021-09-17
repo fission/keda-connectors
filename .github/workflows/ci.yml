@@ -323,7 +323,8 @@ jobs:
         run: |
           helm repo add nats https://nats-io.github.io/k8s/helm/charts/
           helm repo update
-          helm install my-nats nats/nats
+          helm install nats nats/nats
+          sleep 50s
           helm install my-stan nats/stan --set stan.nats.url=nats://nats:4222
           sleep 30s
           kubectl get pods
@@ -345,4 +346,4 @@ jobs:
       - name: Get Nats consumed messages from queue
         run: |
           sleep 30s
-          kubectl logs deployment.apps/nats-con
+          kubectl logs deployment.apps/nats-streaming-deployment
