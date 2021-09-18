@@ -16,4 +16,4 @@ spec:
         durableName: ImDurable
         queueGroup: grp1
         subject: request-topic
-        lagThreshold: "10"
+        lagThreshold: "100"

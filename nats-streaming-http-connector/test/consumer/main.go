@@ -17,18 +17,18 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	sub, err := sc.QueueSubscribe("response-topic", "grp1", func(m *stan.Msg) {
+	_, err = sc.Subscribe("response-topic", func(m *stan.Msg) {
 		msg := string(m.Data)
 		fmt.Println(msg)
-	}, stan.DurableName("ImDurable"), stan.DeliverAllAvailable())
-	if err != nil {
+	}, stan.DeliverAllAvailable())
+	/*if err != nil {
 		log.Fatal(err)
 	}
 	err = sub.Unsubscribe()
 	if err != nil {
 		log.Fatal(err)
 	}
-	sc.Close()
+	sc.Close()*/
 	fmt.Println("All messages consumed")
 	select {}
 }
