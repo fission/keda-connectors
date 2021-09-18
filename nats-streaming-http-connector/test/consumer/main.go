@@ -21,14 +21,6 @@ func main() {
 		msg := string(m.Data)
 		fmt.Println(msg)
 	}, stan.DeliverAllAvailable())
-	/*if err != nil {
-		log.Fatal(err)
-	}
-	err = sub.Unsubscribe()
-	if err != nil {
-		log.Fatal(err)
-	}
-	sc.Close()*/
 	fmt.Println("All messages consumed")
 	select {}
 }

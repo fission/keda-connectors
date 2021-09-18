@@ -17,4 +17,4 @@ spec:
     spec:
       containers:
         - name: consumer
-          image: blackfly19/nats-consumer:latest
+          image: localhost:5000/nats-consumer:latest

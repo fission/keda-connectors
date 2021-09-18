@@ -17,4 +17,4 @@ spec:
     spec:
       containers:
         - name: producer
-          image: blackfly19/nats-producer:latest
+          image: localhost:5000/nats-producer:latest

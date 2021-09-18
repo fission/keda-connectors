@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: keda-nats-streaming-connector
-          image: blackfly19/nats-connector:latest
+          image: localhost:5000/nats-connector:latest
           env:
             - name: TOPIC
               value: request-topic
