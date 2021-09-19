@@ -354,6 +354,6 @@ jobs:
       - name: Get Nats consumed messages from queue
         run: |
           sleep 30s
+          kubectl logs deployment.apps/consumer-deployment
           kubectl logs deployment.apps/consumer-deployment | grep -q "consumed"
           echo $?
-          kubectl logs deployment.apps/consumer-deployment
