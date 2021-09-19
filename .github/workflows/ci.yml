@@ -355,5 +355,5 @@ jobs:
         run: |
           sleep 30s
           kubectl logs deployment.apps/consumer-deployment | grep -q "consumed"
-          kubectl logs deployment.apps/consumer-deployment
           echo $?
+          kubectl logs deployment.apps/consumer-deployment
