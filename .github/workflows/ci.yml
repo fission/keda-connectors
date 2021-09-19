@@ -346,7 +346,6 @@ jobs:
         run: |
           cd nats-streaming-http-connector/test/producer/
           kubectl apply -f deployment.yaml
-          sleep 20s
       - name: Bring up the Nats consumer queue and Listen for incoming messages
         run: |
           cd nats-streaming-http-connector/test/consumer/

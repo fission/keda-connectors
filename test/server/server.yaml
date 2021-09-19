@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: http-server
-          image: blackfly19/http-server:latest
+          image: localhost:5000/http-server:latest
           ports:
             - containerPort: 8080
 ---
