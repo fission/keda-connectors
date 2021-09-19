@@ -346,6 +346,7 @@ jobs:
         run: |
           cd nats-streaming-http-connector/test/producer/
           kubectl apply -f deployment.yaml
+          sleep 30s
       - name: Bring up the Nats consumer queue and Listen for incoming messages
         run: |
           cd nats-streaming-http-connector/test/consumer/
@@ -353,4 +354,5 @@ jobs:
       - name: Get Nats consumed messages from queue
         run: |
           sleep 30s
-          kubectl logs deployment.apps/consumer-deployment
+          kubectl logs deployment.apps/consumer-deployment | grep -q "consumed"
+          echo $?
