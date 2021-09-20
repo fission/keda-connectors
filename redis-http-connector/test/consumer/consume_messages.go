@@ -26,7 +26,7 @@ func main() {
 	}
 
 	for listItr = 0; listItr < listLength; listItr++ {
-		msg, err := rdb.LPop(ctx, "request-topic").Result()
+		msg, err := rdb.LPop(ctx, "response-topic").Result()
 
 		if err != nil {
 			log.Fatalf("Error in consuming queue: %v", err)
