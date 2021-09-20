@@ -20,8 +20,9 @@ func main() {
 		Password: password,
 	})
 
-	listLength, err := rdb.LLen(ctx, "request-topic").Result()
+	listLength, err := rdb.LLen(ctx, "response-topic").Result()
 	if err != nil {
+		fmt.Println(rdb.Keys())
 		log.Fatalf("Error in consuming queue: %v", err)
 	}
 
