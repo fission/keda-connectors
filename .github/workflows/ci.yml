@@ -285,7 +285,7 @@ jobs:
           cd redis-http-connector/test/kubernetes
           kubectl create namespace ot-operators
           helm upgrade redis ot-helm/redis -f redis-values.yaml --install --namespace ot-operators
-          sleep 30s
+          sleep 50s
           kubectl get pods -n ot-operators
       - name: Deploy Redis Keda Connector and Keda ScaledObject
         run: |
@@ -298,6 +298,7 @@ jobs:
         run: |
           cd redis-http-connector/test/publisher/
           kubectl apply -f publisher-deployment.yaml
+          sleep 30s
       - name: Bring up the Redis consumer queue and Listen for incoming messages
         run: |
           cd redis-http-connector/test/consumer/
