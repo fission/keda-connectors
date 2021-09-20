@@ -309,7 +309,6 @@ jobs:
           cd redis-http-connector/test/consumer/
           kubectl apply -f consumer-deployment.yaml
           sleep 20s
-          kubectl logs
       - name: Get Redis consumed messages from queue
         run: |
           sleep 30s

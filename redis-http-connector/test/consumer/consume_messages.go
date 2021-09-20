@@ -35,4 +35,5 @@ func main() {
 		fmt.Println(msg)
 	}
 	fmt.Println("Messages consumed!")
+	select {}
 }
