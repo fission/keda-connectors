@@ -299,6 +299,7 @@ jobs:
           cd redis-http-connector/test/publisher/
           kubectl apply -f publisher-deployment.yaml
           sleep 30s
+          kubectl logs deployment.apps/redis-deployment
       - name: Bring up the Redis consumer queue and Listen for incoming messages
         run: |
           cd redis-http-connector/test/consumer/
