@@ -22,7 +22,7 @@ func main() {
 
 	listLength, err := rdb.LLen(ctx, "response-topic").Result()
 	if err != nil {
-		fmt.Println(rdb.Keys())
+		fmt.Println(rdb.Keys(ctx, "*"))
 		log.Fatalf("Error in consuming queue: %v", err)
 	}
 
