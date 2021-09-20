@@ -298,12 +298,18 @@ jobs:
         run: |
           cd redis-http-connector/test/publisher/
           kubectl apply -f publisher-deployment.yaml
+          sleep 5s
+          kubectl get pods
+          sleep 5s
+          kubectl get pods
           sleep 30s
-          kubectl logs deployment.apps/redis-deployment
+          kubectl get pods
       - name: Bring up the Redis consumer queue and Listen for incoming messages
         run: |
           cd redis-http-connector/test/consumer/
           kubectl apply -f consumer-deployment.yaml
+          sleep 20s
+          kubectl logs
       - name: Get Redis consumed messages from queue
         run: |
           sleep 30s

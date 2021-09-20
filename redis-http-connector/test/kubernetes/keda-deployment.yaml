@@ -31,5 +31,5 @@ spec:
               value: application/json
             - name: MAX_RETRIES
               value: "3"
-            - name: REDIS_HOST
+            - name: ADDRESS
               value: redis-headless.ot-operators.svc.cluster.local:6379
