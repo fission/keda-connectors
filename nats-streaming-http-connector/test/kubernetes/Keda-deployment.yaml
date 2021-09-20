@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nats-streaming-deployment
+  namespace: default
+  labels:
+    keda: nats
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      keda: nats
+  template:
+    metadata:
+      labels:
+        keda: nats
+    spec:
+      containers:
+        - name: keda-nats-streaming-connector
+          image: localhost:5000/nats-connector:latest
+          env:
+            - name: TOPIC
+              value: request-topic
+            - name: HTTP_ENDPOINT
+              value: http://http-service.default.svc.cluster.local:8080/post
+            - name: ERROR_TOPIC
+              value: error-topic
+            - name: RESPONSE_TOPIC
+              value: response-topic
+            - name: CONTENT_TYPE
+              value: application/json
+            - name: MAX_RETRIES
+              value: "3"
+            - name: NATS_SERVER
+              value: nats://nats:4222
+            - name: QUEUE_GROUP
+              value: grp1
+            - name: DURABLE_NAME
+              value: ImDurable
+            - name: CLUSTER_ID
+              value: my-stan

@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: producer-deployment
+  name: consumer-deployment
   namespace: default
   labels:
-    app: producer
+    app: consumer
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: producer
+      app: consumer
   template:
     metadata:
       labels:
-        app: producer
+        app: consumer
     spec:
       containers:
-        - name: producer
-          image: localhost:5000/nats-producer:latest
+        - name: consumer
+          image: localhost:5000/nats-consumer:latest
