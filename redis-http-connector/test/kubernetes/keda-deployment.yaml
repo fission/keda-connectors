@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: keda-redis-connector
-          image: blackfly19/keda-redis-http-connector:v5
+          image: localhost:5000/redis-connector:latest
           env:
             - name: TOPIC
               value: request-topic
@@ -31,5 +31,5 @@ spec:
               value: application/json
             - name: MAX_RETRIES
               value: "3"
-            - name: REDIS_HOST
+            - name: ADDRESS
               value: redis-headless.ot-operators.svc.cluster.local:6379

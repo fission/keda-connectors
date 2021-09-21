@@ -44,4 +44,5 @@ func main() {
 		}
 	}
 	fmt.Println("Message publishing successful!")
+	select {}
 }
