@@ -33,17 +33,16 @@ type kafkaMetadata struct {
 	consumerGroup     string
 	offsetResetPolicy string
 
-	// auth
+	// SASL
 	saslType string
 	username string
 	password string
 
-	// ssl
-	tls                string
-	cert               string
-	key                string
-	ca                 string
-	InsecureSkipVerify bool
+	// TLS
+	tls  string
+	cert string
+	key  string
+	ca   string
 }
 
 const (
@@ -89,10 +88,6 @@ func parseKafkaMetadata(logger *zap.Logger) (kafkaMetadata, error) {
 	}
 	meta.offsetResetPolicy = offsetResetPolicy
 
-	meta.InsecureSkipVerify = true
-	if os.Getenv("TLS_INSECURE_SKIP_VERIFY") == "false" {
-		meta.InsecureSkipVerify = false
-	}
 	meta.tls = os.Getenv("TLS")
 	if meta.tls == "" {
 		meta.tls = "disabled"
@@ -101,7 +96,7 @@ func parseKafkaMetadata(logger *zap.Logger) (kafkaMetadata, error) {
 	meta.saslType = os.Getenv("SASL")
 
 	if meta.saslType != kafkaAuthModeSaslPlaintext && meta.saslType != kafkaAuthModeNone && meta.saslType != kafkaAuthModeSaslScramSha256 && meta.saslType != kafkaAuthModeSaslScramSha512 {
-		return meta, fmt.Errorf("Incorrect value for sasl authentication %s given", meta.saslType)
+		return meta, fmt.Errorf("incorrect value for sasl authentication %s given", meta.saslType)
 	}
 
 	if meta.saslType != kafkaAuthModeNone {
@@ -177,7 +172,6 @@ func getConfig(metadata kafkaMetadata) (*sarama.Config, error) {
 		if err != nil {
 			return nil, err
 		}
-		config.Net.TLS.Config.InsecureSkipVerify = metadata.InsecureSkipVerify
 		config.Net.TLS.Config = tlsConfig
 	}
 
