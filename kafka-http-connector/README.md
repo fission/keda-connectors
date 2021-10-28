@@ -15,7 +15,7 @@ Following environment variables are used by connector image as configuration to 
 - `BROKER_LIST`: comma separated list of Kafka brokers “hostname:port” to connect to for bootstrap (DEPRECATED).
 - `BOOTSTRAP_SERVERS`: Comma separated list of Kafka brokers “hostname:port” to connect to for bootstrap.
 - `CONSUMER_GROUP`: Kafka consumer group.
-- `SASL`: Kafka sasl auth mode. Optional. The default value is none. For now, it must be one of none, plaintext, sasl_ssl, scram_sha256, scram_sha512.
+- `SASL`: Kafka sasl auth mode. Optional. The default value is none. For now, it must be one of none, plaintext, scram_sha256, scram_sha512.
 - `USERNAME`: Optional. If authmode is not none, this is required.
 - `PASSWORD`: Optional. If authmode is not none, this is required.
 - `TLS`: To enable SSL auth for Kafka, set this to enable. If not set, TLS for Kafka is not used. (Optional)
