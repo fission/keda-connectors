@@ -89,34 +89,38 @@ func (conn natsConnector) consumeMessage() {
 
 func (conn natsConnector) errorHandler(err error) {
 
-	if len(conn.connectordata.ErrorTopic) > 0 {
-		publishErr := conn.stanConnection.Publish(conn.connectordata.ErrorTopic, []byte(err.Error()))
+	if len(conn.connectordata.ErrorTopic) == 0 {
+		conn.logger.Warn("Error topic not set")
+		return
+	}
 
-		if publishErr != nil {
-			conn.logger.Error("failed to publish message to error topic",
-				zap.Error(publishErr),
-				zap.String("source", conn.connectordata.SourceName),
-				zap.String("message", publishErr.Error()),
-				zap.String("topic", conn.connectordata.ErrorTopic))
-		}
+	publishErr := conn.stanConnection.Publish(conn.connectordata.ErrorTopic, []byte(err.Error()))
+
+	if publishErr != nil {
+		conn.logger.Error("failed to publish message to error topic",
+			zap.Error(publishErr),
+			zap.String("source", conn.connectordata.SourceName),
+			zap.String("message", publishErr.Error()),
+			zap.String("topic", conn.connectordata.ErrorTopic))
 	}
 }
 
 func (conn natsConnector) responseHandler(response []byte) bool {
 
-	if len(conn.connectordata.ResponseTopic) > 0 {
+	if len(conn.connectordata.ResponseTopic) == 0 {
+		conn.logger.Warn("Response topic not set")
+		return false
+	}
+	publishErr := conn.stanConnection.Publish(conn.connectordata.ResponseTopic, response)
 
-		publishErr := conn.stanConnection.Publish(conn.connectordata.ResponseTopic, response)
-
-		if publishErr != nil {
-			conn.logger.Error("failed to publish response body from http request to topic",
-				zap.Error(publishErr),
-				zap.String("topic", conn.connectordata.ResponseTopic),
-				zap.String("source", conn.connectordata.SourceName),
-				zap.String("http endpoint", conn.connectordata.HTTPEndpoint),
-			)
-			return false
-		}
+	if publishErr != nil {
+		conn.logger.Error("failed to publish response body from http request to topic",
+			zap.Error(publishErr),
+			zap.String("topic", conn.connectordata.ResponseTopic),
+			zap.String("source", conn.connectordata.SourceName),
+			zap.String("http endpoint", conn.connectordata.HTTPEndpoint),
+		)
+		return false
 	}
 	return true
 }
