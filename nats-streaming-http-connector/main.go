@@ -88,14 +88,17 @@ func (conn natsConnector) consumeMessage() {
 }
 
 func (conn natsConnector) errorHandler(err error) {
-	publishErr := conn.stanConnection.Publish(conn.connectordata.ErrorTopic, []byte(err.Error()))
 
-	if publishErr != nil {
-		conn.logger.Error("failed to publish message to error topic",
-			zap.Error(publishErr),
-			zap.String("source", conn.connectordata.SourceName),
-			zap.String("message", publishErr.Error()),
-			zap.String("topic", conn.connectordata.ErrorTopic))
+	if len(conn.connectordata.ErrorTopic) > 0 {
+		publishErr := conn.stanConnection.Publish(conn.connectordata.ErrorTopic, []byte(err.Error()))
+
+		if publishErr != nil {
+			conn.logger.Error("failed to publish message to error topic",
+				zap.Error(publishErr),
+				zap.String("source", conn.connectordata.SourceName),
+				zap.String("message", publishErr.Error()),
+				zap.String("topic", conn.connectordata.ErrorTopic))
+		}
 	}
 }
 
