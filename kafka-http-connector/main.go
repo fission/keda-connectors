@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"unicode/utf8"
 
 	"github.com/Shopify/sarama"
 	"github.com/pkg/errors"
@@ -218,7 +219,9 @@ func (conn *kafkaConnector) ConsumeClaim(session sarama.ConsumerGroupSession, cl
 
 		// Set the headers came from Kafka record
 		for _, h := range message.Headers {
-			headers.Add(string(h.Key), string(h.Value))
+			if utf8.ValidString(string(h.Value)) {
+				headers.Add(string(h.Key), string(h.Value))
+			}
 		}
 
 		resp, err := common.HandleHTTPRequest(msg, headers, conn.connectorData, conn.logger)
