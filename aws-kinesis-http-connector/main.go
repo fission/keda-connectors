@@ -34,7 +34,7 @@ type awsKinesisConnector struct {
 	maxRecords    int64
 }
 
-//listShards get called every 30sec to get all the shards
+// listShards get called every 30sec to get all the shards
 func (conn *awsKinesisConnector) listShards() ([]*kinesis.Shard, error) {
 	//call DescribeStream to get updated shards
 	stream, err := conn.client.DescribeStream(&kinesis.DescribeStreamInput{
@@ -46,7 +46,7 @@ func (conn *awsKinesisConnector) listShards() ([]*kinesis.Shard, error) {
 	return stream.StreamDescription.Shards, nil
 }
 
-//findNewShards sends shards, it only sends newly added shards
+// findNewShards sends shards, it only sends newly added shards
 func (conn *awsKinesisConnector) findNewShards() {
 	var shards sync.Map
 	var ticker = time.NewTicker(30 * time.Second)
@@ -73,7 +73,7 @@ func (conn *awsKinesisConnector) findNewShards() {
 	}
 }
 
-//getIterator get's the iterator either from start or from where we left
+// getIterator get's the iterator either from start or from where we left
 func (conn *awsKinesisConnector) getIterator(shardID string, checkpoint string) (*kinesis.GetShardIteratorOutput, error) {
 	params := &kinesis.GetShardIteratorInput{
 		ShardId:    &shardID,
@@ -99,7 +99,7 @@ func (conn *awsKinesisConnector) getIterator(shardID string, checkpoint string) 
 	return iteratorOutput, err
 }
 
-//getRecords get the data for the specific shard
+// getRecords get the data for the specific shard
 func (conn *awsKinesisConnector) getRecords(shardIterator *string) (*kinesis.GetRecordsOutput, error) {
 	// get records use shard iterator for making request
 	records, err := conn.client.GetRecords(&kinesis.GetRecordsInput{
@@ -112,13 +112,13 @@ func (conn *awsKinesisConnector) getRecords(shardIterator *string) (*kinesis.Get
 	return records, nil
 }
 
-//Check if shards are closed, shards can be updated by using update-shard-count method
+// Check if shards are closed, shards can be updated by using update-shard-count method
 func isShardClosed(nextShardIterator, currentShardIterator *string) bool {
 	//No new iterator is present, means it is closed
 	return nextShardIterator == nil || currentShardIterator == nextShardIterator
 }
 
-//scan each shards for any new records, when found call the passed func
+// scan each shards for any new records, when found call the passed func
 func (conn *awsKinesisConnector) pullRecords(fn pullFunc) {
 	//checkpoints to identify how much read has happened
 	var checkpoints sync.Map
