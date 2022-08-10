@@ -2,12 +2,15 @@ FROM golang:1.18-alpine as build
 
 RUN apk add --no-cache git
 
-WORKDIR /src 
+RUN mkdir /src
+WORKDIR /src
+COPY go.mod . 
+COPY go.sum .
 
-RUN go get github.com/sirupsen/logrus
-RUN go get github.com/streadway/amqp
+RUN go mod download
 
-COPY consumer-msgs.go /src 
+# Copy source code to image
+COPY . .
 
 RUN go build consumer-msgs.go
 
