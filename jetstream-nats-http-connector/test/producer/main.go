@@ -32,6 +32,9 @@ func main() {
 	// Create records by publishing messages
 	err = publishdata(js)
 	checkErr(err)
+
+	// This is to run the process forever and presents container to get restarted
+	select {}
 }
 
 // publishdata publishes data to input stream
@@ -40,11 +43,13 @@ func publishdata(js nats.JetStreamContext) error {
 	no, err := strconv.Atoi(os.Getenv("COUNT"))
 	if err != nil {
 		log.Println("invalid count provided. Err: ", err)
-		return err
+		no = 3
+		return nil
 	}
 	for i := 1; i <= no; i++ {
 		_, err := js.Publish(subjectName, []byte("Test"+strconv.Itoa(i)))
 		if err != nil {
+			log.Println("Error found: ", err)
 			return err
 		}
 		log.Printf("Order with OrderID:%d has been published\n", i)

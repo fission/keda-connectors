@@ -10,7 +10,7 @@ The job of the connector is to read messages from the subject in the given strea
 - `RESPONSE_TOPIC`: Subject to write responses on success response.  It is generally of form - `streamname.subjectname` where streamname should be different then input stream //TODO: need to check this
 - `MAX_RETRIES`: Maximum number of times an http endpoint will be retried upon failure.
 - `CONTENT_TYPE`: Content type used while creating post request
-- `NATS_SERVER`: NATS server address. It can be a remote address `nats://127.0.0.1:4222` or in case deployed in Kubernetes
+- `NATS_SERVER`: NATS server address. It can be a remote address `nats://127.0.0.1:4222` or in case deployed in Kubernetes, can reached using corresponding service name
 - `STREAM`: stream from which connector will read messages.
 -  `CONSUME`: consumer which would be created in the connector to read data from the stream
 
