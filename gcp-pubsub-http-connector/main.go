@@ -163,7 +163,7 @@ func convHeadersToAttr(headers http.Header) map[string]string {
 	return attr
 }
 
-//GetGCPInfo gets the configuration required to connect to GCP
+// GetGCPInfo gets the configuration required to connect to GCP
 func GetGCPInfo() (*GCPPubsubConnInfo, error) {
 
 	creds := os.Getenv("CREDENTIALS_FROM_ENV")
