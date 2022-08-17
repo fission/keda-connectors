@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -205,7 +205,7 @@ func (conn *awsKinesisConnector) consumeMessage(r *record) {
 		conn.errorHandler(r, err.Error())
 	} else {
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			conn.logger.Error("error processing message",
 				zap.String("shardID", r.shardID),
