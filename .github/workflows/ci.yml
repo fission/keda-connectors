@@ -34,7 +34,7 @@ jobs:
             natschanges:
               - 'nats-streaming-http-connector/**'
             jetstreamnatschanges:
-              - 'jetsream-nats-http-connector/**'
+              - 'jetstream-nats-http-connector/**'
 
   kafka:
     needs: check
