@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -95,7 +95,7 @@ func (conn pubsubConnector) consumeMessage() {
 			conn.logger.Error("Error sending the message to the endpoint %v", zap.Error(err))
 		} else {
 			defer resp.Body.Close()
-			body, err := ioutil.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				if conn.connectordata.ErrorTopic != "" {
 					conn.responseOrErrorHandler(conn.connectordata.ErrorTopic, string(body), headers)
@@ -163,7 +163,7 @@ func convHeadersToAttr(headers http.Header) map[string]string {
 	return attr
 }
 
-//GetGCPInfo gets the configuration required to connect to GCP
+// GetGCPInfo gets the configuration required to connect to GCP
 func GetGCPInfo() (*GCPPubsubConnInfo, error) {
 
 	creds := os.Getenv("CREDENTIALS_FROM_ENV")

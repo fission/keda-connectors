@@ -14,17 +14,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set up Go 1.15
+      - name: Set up Go 1.18
         uses: actions/setup-go@v2
         with:
-          go-version: 1.15
+          go-version: 1.18
 
       - name: Check out code
         uses: actions/checkout@v2
 
       - name: Verify dependencies
         run: |
-          LINT_VERSION=1.41.1
+          LINT_VERSION=1.48.0
           curl -fsSL https://github.com/golangci/golangci-lint/releases/download/v${LINT_VERSION}/golangci-lint-${LINT_VERSION}-linux-amd64.tar.gz | \
             tar xz --strip-components 1 --wildcards \*/golangci-lint
           sudo mv golangci-lint /usr/local/bin/

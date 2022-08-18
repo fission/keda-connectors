@@ -1,4 +1,4 @@
-FROM golang:1.15-alpine as builder
+FROM golang:1.18-alpine as builder
 
 RUN apk add bash ca-certificates git gcc g++ libc-dev
 
@@ -14,7 +14,7 @@ RUN go mod download
 COPY . .
 
 RUN go build -a -o /go/bin/main
-FROM alpine:3.15 as base
+FROM alpine:3.16 as base
 RUN apk add --update ca-certificates
 COPY --from=builder /go/bin/main /
 

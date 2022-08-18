@@ -1,7 +1,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"net/url"
 	"strings"
@@ -80,7 +80,7 @@ func (conn awsSQSConnector) consumeMessage() {
 			if err != nil {
 				conn.errorHandler(errorQueueURL, err)
 			} else {
-				body, err := ioutil.ReadAll(resp.Body)
+				body, err := io.ReadAll(resp.Body)
 				if err != nil {
 					conn.errorHandler(errorQueueURL, err)
 				} else {

@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -51,7 +51,7 @@ func (conn redisConnector) consumeMessage(ctx context.Context) {
 				conn.errorHandler(ctx, err)
 			} else {
 				defer response.Body.Close()
-				body, err := ioutil.ReadAll(response.Body)
+				body, err := io.ReadAll(response.Body)
 				if err != nil {
 					conn.errorHandler(ctx, err)
 				} else {
