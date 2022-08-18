@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/io"
+	"io"
 	"log"
 	"net/http"
 	"os"
