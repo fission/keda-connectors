@@ -1,7 +1,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -41,7 +41,7 @@ func (conn natsConnector) consumeMessage() {
 			conn.errorHandler(err)
 		} else {
 			defer resp.Body.Close()
-			body, err := ioutil.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				conn.logger.Info(err.Error())
 				conn.errorHandler(err)

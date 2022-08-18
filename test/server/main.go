@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	//	"time"
@@ -32,7 +32,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	//	fmt.Println("Request Received.")
 	if r.Method == "POST" {
 
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, "Error reading request body",
 				http.StatusInternalServerError)

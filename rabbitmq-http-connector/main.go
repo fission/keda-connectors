@@ -1,7 +1,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -67,7 +67,7 @@ func (conn rabbitMQConnector) consumeMessage() {
 					conn.errorHandler(err)
 				} else {
 					defer resp.Body.Close()
-					body, err := ioutil.ReadAll(resp.Body)
+					body, err := io.ReadAll(resp.Body)
 					if err != nil {
 						conn.errorHandler(err)
 					} else {
