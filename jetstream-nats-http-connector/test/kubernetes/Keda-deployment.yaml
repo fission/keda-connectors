@@ -19,14 +19,12 @@ spec:
         - name: keda-nats-streaming-connector
           image: localhost:5000/jetstream-connector:latest  
           env:
-            - name: HOST
-              value: "nats://jetstream-nats:4222"
             - name: TOPIC
               value: input.created
             - name: HTTP_ENDPOINT 
               value: http://http-service.default.svc.cluster.local:8080/post
             - name: ERROR_TOPIC
-              value: error-topic
+              value: output.error-topic
             - name: RESPONSE_TOPIC
               value: output.response-topic
             - name: CONTENT_TYPE
