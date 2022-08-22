@@ -9,9 +9,10 @@ import (
 	"os/signal"
 	"strings"
 
-	"github.com/fission/keda-connectors/common"
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
+
+	"github.com/fission/keda-connectors/common"
 )
 
 var (
