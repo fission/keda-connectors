@@ -4,15 +4,15 @@ metadata:
   name: jetstream-scaledobject
   namespace: default
   labels:
-    keda: jetstream-nats
+    keda: nats-jetstream
 spec:
   pollingInterval: 30
   scaleTargetRef:
-    name: keda-jetstream-nats-deployment
+    name: keda-nats-jetstream-deployment
   triggers:
     - type: nats-jetstream
       metadata:
-        natsServerMonitoringEndpoint: jetstream-nats.default.svc.cluster.local:8222
+        natsServerMonitoringEndpoint: nats-jetstream.default.svc.cluster.local:8222
         account: "$G"
         stream: "input"
         consumer: "input_consumer"

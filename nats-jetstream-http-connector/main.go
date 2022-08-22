@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -14,6 +14,10 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	FISSION_CONSUMER = "fission_consumer" // TODO: need to change this
+)
+
 type jetstreamConnector struct {
 	host          string
 	connectordata common.ConnectorMetadata
@@ -23,7 +27,7 @@ type jetstreamConnector struct {
 
 func (conn jetstreamConnector) consumeMessage() {
 
-	sub, err := conn.jsContext.PullSubscribe(os.Getenv("TOPIC"), os.Getenv("CONSUMER"), nats.PullMaxWaiting(512))
+	sub, err := conn.jsContext.PullSubscribe(os.Getenv("TOPIC"), FISSION_CONSUMER, nats.PullMaxWaiting(512))
 	if err != nil {
 		conn.logger.Fatal("error occurred while consuming message", zap.Error(err))
 	}
@@ -42,7 +46,7 @@ func (conn jetstreamConnector) consumeMessage() {
 			if err != nil {
 				conn.logger.Error("error occurred while unsubscribing", zap.Error(err))
 			}
-			err = conn.jsContext.DeleteConsumer(os.Getenv("STREAM"), os.Getenv("CONSUMER"))
+			err = conn.jsContext.DeleteConsumer(os.Getenv("STREAM"), FISSION_CONSUMER)
 			if err != nil {
 				conn.logger.Error("error occurred while closing connection", zap.Error(err))
 			}
@@ -71,9 +75,10 @@ func (conn jetstreamConnector) handleHTTPRequest(msg *nats.Msg) {
 	if err != nil {
 		conn.logger.Info(err.Error())
 		conn.errorHandler(err)
+		// mqtpod
 	} else {
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			conn.logger.Info(err.Error())
 			conn.errorHandler(err)
@@ -200,8 +205,8 @@ func main() {
 	}
 
 	_, err = js.AddConsumer(os.Getenv("STREAM"), &nats.ConsumerConfig{
-		Durable:   os.Getenv("CONSUMER"),
-		AckPolicy: 2,
+		Durable:   FISSION_CONSUMER,
+		AckPolicy: nats.AckExplicitPolicy,
 	})
 
 	if err != nil {

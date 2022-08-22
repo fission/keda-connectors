@@ -20,4 +20,4 @@ spec:
           image: localhost:5000/jetstream-consumer:latest 
           env:
             - name: NATS_SERVER
-              value: "nats://jetstream-nats:4222"
+              value: "nats://nats-jetstream:4222"

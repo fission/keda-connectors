@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: jetstream-nats-deployment
+  name: nats-jetstream-deployment
   labels:
-    app: jetstream-nats
+    app: nats-jetstream
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: jetstream-nats
+      app: nats-jetstream
   template:
     metadata:
       labels:
-        app: jetstream-nats
+        app: nats-jetstream
     spec:
       containers:
-      - name: jetstream-nats
+      - name: nats-jetstream
       #  docker run --network host -p 4222:4222 nats -js -m 8222
         image: nats:latest
         args: ["-js","-m", "8222" ]
@@ -23,12 +23,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: jetstream-nats
+  name: nats-jetstream
   labels:
-    app: jetstream-nats
+    app: nats-jetstream
 spec:
   selector:
-    app: jetstream-nats
+    app: nats-jetstream
   clusterIP: None
   ports:
   - name: client

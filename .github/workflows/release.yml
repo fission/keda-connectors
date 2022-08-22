@@ -25,8 +25,8 @@ jobs:
               - 'aws-sqs-http-connector/version'
             nats-streaming-http-connector:
               - 'nats-streaming-http-connector/version'
-            jetstream-nats-http-connector:
-              - 'jetstream-nats-http-connector/version'
+            nats-jetstream-http-connector:
+              - 'nats-jetstream-http-connector/version'
             aws-kinesis-http-connector:
               - 'aws-kinesis-http-connector/version'
             gcp-pubsub-http-connector:

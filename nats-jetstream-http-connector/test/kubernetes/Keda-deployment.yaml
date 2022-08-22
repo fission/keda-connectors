@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: keda-jetstream-nats-deployment
+  name: keda-nats-jetstream-deployment
   namespace: default
   labels:
-    keda: jetstream-nats
+    keda: nats-jetstream
 spec:
   replicas: 1
   selector:
     matchLabels:
-      keda: jetstream-nats
+      keda: nats-jetstream
   template:
     metadata:
       labels:
-        keda: jetstream-nats
+        keda: nats-jetstream
     spec:
       containers:
         - name: keda-nats-streaming-connector
@@ -32,9 +32,11 @@ spec:
             - name: MAX_RETRIES
               value: "3"
             - name: NATS_SERVER
-              value: "nats://jetstream-nats:4222"
+              value: "nats://nats-jetstream:4222"
             - name: STREAM
               value: input
-            - name: CONSUMER
+            - name: FISSION_CONSUMER
               value: input_consumer
+            - name: CONSUMER
+              value: output
             

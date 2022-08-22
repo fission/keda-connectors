@@ -33,8 +33,8 @@ jobs:
               - 'redis-http-connector/**'
             natschanges:
               - 'nats-streaming-http-connector/**'
-            jetstreamnatschanges:
-              - 'jetstream-nats-http-connector/**'
+            natsjetstreamchanges:
+              - 'nats-jetstream-http-connector/**'
 
   kafka:
     needs: check
@@ -384,9 +384,9 @@ jobs:
           kubectl logs deployment.apps/consumer-deployment | grep -q "consumed"
           echo $?
 
-  jetstreamnats:
+  natsjetstream:
     needs: check
-    if: contains(needs.check.outputs.packages, 'jetstreamnatschanges')
+    if: contains(needs.check.outputs.packages, 'natsjetstreamchanges')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the current repo
@@ -412,38 +412,38 @@ jobs:
           kubectl wait pod -l app=http --for=condition=ready --timeout=-1s
       - name: Create Docker Image for Jetstream Nats KEDA Connector
         run: |
-          cd jetstream-nats-http-connector/
+          cd nats-jetstream-http-connector/
           docker build -t localhost:5000/jetstream-connector:latest .
           docker push localhost:5000/jetstream-connector:latest
       - name: Create Nats Docker Image for Publisher
         run: |
-          cd jetstream-nats-http-connector/test/producer/
+          cd nats-jetstream-http-connector/test/producer/
           docker build -t localhost:5000/jetstream-producer:latest .
           docker push localhost:5000/jetstream-producer:latest
       - name: Create Nats Docker Image for Consumer
         run: |
-          cd jetstream-nats-http-connector/test/consumer/
+          cd nats-jetstream-http-connector/test/consumer/
           docker build -t localhost:5000/jetstream-consumer:latest .
           docker push localhost:5000/jetstream-consumer:latest
       - name: Deploy Jetstream Nats cluster
         run: |
-          cd jetstream-nats-http-connector/test/jetstream
+          cd nats-jetstream-http-connector/test/jetstream
           kubectl apply -f jetstream-server.yaml 
       - name: Deploy Nats Keda Connector and Keda ScaledObject
         run: |
-          cd jetstream-nats-http-connector/test/kubernetes/ 
+          cd nats-jetstream-http-connector/test/kubernetes/ 
           kubectl apply -f Keda-deployment.yaml
           sleep 30s
           kubectl apply -f keda-ScaledObject.yaml
           sleep 30s
       - name: Publish Nats messages in a queue
         run: |
-          cd jetstream-nats-http-connector/test/producer/
+          cd nats-jetstream-http-connector/test/producer/
           kubectl apply -f deployment.yaml
           sleep 30s
       - name: Bring up the Nats consumer queue and Listen for incoming messages
         run: |
-          cd jetstream-nats-http-connector/test/consumer/
+          cd nats-jetstream-http-connector/test/consumer/
           kubectl apply -f deployment.yaml
       - name: Get Nats consumed messages from queue
         run: |

@@ -1,4 +1,4 @@
-module github.com/fission/keda-connectors/jetstream-nats-connector/producer
+module github.com/fission/keda-connectors/nats-jetstream-connector/consumer
 
 go 1.18
 
