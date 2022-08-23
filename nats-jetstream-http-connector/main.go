@@ -106,7 +106,8 @@ func (conn jetstreamConnector) errorHandler(err error) {
 	// We split it and use the first word to create and stream if not found.
 	// Push the responses to the above created stream.
 	errorTopic := strings.Split(conn.connectordata.ErrorTopic, ".")
-	log.Println("errortopic: ", errorTopic)
+	conn.logger.Debug("errortopic:", zap.String("topic: ", errorTopic[0]))
+
 	streamCreationErr := conn.createStream(conn.jsContext, errorTopic[0], conn.connectordata.ErrorTopic)
 	if streamCreationErr != nil {
 		conn.logger.Error("failed to publish response body from http request to topic",
@@ -211,15 +212,15 @@ func main() {
 	// Connect to NATS
 	nc, err = nats.Connect(host)
 	if err != nil {
-		log.Fatal("err while connecting: ", err)
+		logger.Fatal("err while connecting: ", zap.Error(err))
 	}
 	js, err := nc.JetStream()
 	if err != nil {
-		log.Fatal("err while getting jetstream context: ", err)
+		logger.Fatal("err while getting jetstream context: ", zap.Error(err))
 	}
 
 	if len(os.Getenv("FISSION_CONSUMER")) <= 0 {
-		log.Fatal("err fission consumer mot provided")
+		logger.Fatal("err fission consumer mot provided")
 	}
 	_, err = js.AddConsumer(os.Getenv("STREAM"), &nats.ConsumerConfig{
 		Durable:   os.Getenv("FISSION_CONSUMER"),
@@ -227,7 +228,7 @@ func main() {
 	})
 
 	if err != nil {
-		log.Fatal("err while creating consumer: ", err)
+		logger.Fatal("err while creating consumer: ", zap.Error(err))
 	}
 	conn := jetstreamConnector{
 		host:            host,
