@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keda-nats-jetstream-deployment
+  namespace: default
+  labels:
+    keda: nats-jetstream
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      keda: nats-jetstream
+  template:
+    metadata:
+      labels:
+        keda: nats-jetstream
+    spec:
+      containers:
+        - name: keda-nats-streaming-connector
+          image: localhost:5000/jetstream-connector:latest  
+          env:
+            - name: TOPIC
+              value: input.created
+            - name: HTTP_ENDPOINT 
+              value: http://http-service.default.svc.cluster.local:8080/post
+            - name: ERROR_TOPIC
+              value: output.error-topic
+            - name: RESPONSE_TOPIC
+              value: output.response-topic
+            - name: CONTENT_TYPE
+              value: application/json
+            - name: MAX_RETRIES
+              value: "3"
+            - name: NATS_SERVER
+              value: "nats://nats-jetstream:4222"
+            - name: STREAM
+              value: input
+            - name: FISSION_CONSUMER
+              value: input_consumer
+            - name: CONSUMER
+              value: output
+            
