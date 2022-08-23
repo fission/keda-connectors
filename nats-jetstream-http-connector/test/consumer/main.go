@@ -67,7 +67,7 @@ func consumerMessage(js nats.JetStreamContext, topic, stream, consumer string) {
 		}
 		msgs, _ := sub.Fetch(10, nats.Context(ctx))
 		for _, msg := range msgs {
-			fmt.Println(string(msg.Data))
+			fmt.Println("consumed message: ", string(msg.Data))
 			msg.Ack()
 
 		}

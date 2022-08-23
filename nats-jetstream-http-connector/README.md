@@ -21,6 +21,3 @@ The job of the connector is to read messages from the subject in the given strea
 * For running the connecter with fission e.g.  
 
 ``` fission mqt create --name jetstreamtest1 --function helloworld --mqtype nats-jetstream --mqtkind keda --topic input.created --resptopic output.response-topic --errortopic output.error-topic --maxretries 3 --metadata stream=input --metadata fissionConsumer= fission_consumer --metadata natsServerMonitoringEndpoint=nats-jetstream.default.svc.cluster.local:8222  --metadata natsServer=nats://nats-jetstream.default.svc.cluster.local:4222 ```
-
- 
-          
