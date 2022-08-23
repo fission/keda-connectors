@@ -15,20 +15,17 @@ import (
 	"github.com/fission/keda-connectors/common"
 )
 
-var (
-	FISSION_CONSUMER = "fission_consumer" // TODO: need to change this
-)
-
 type jetstreamConnector struct {
-	host          string
-	connectordata common.ConnectorMetadata
-	jsContext     nats.JetStreamContext
-	logger        *zap.Logger
+	host            string
+	fissionConsumer string
+	connectordata   common.ConnectorMetadata
+	jsContext       nats.JetStreamContext
+	logger          *zap.Logger
 }
 
 func (conn jetstreamConnector) consumeMessage() {
 
-	sub, err := conn.jsContext.PullSubscribe(os.Getenv("TOPIC"), FISSION_CONSUMER, nats.PullMaxWaiting(512))
+	sub, err := conn.jsContext.PullSubscribe(os.Getenv("TOPIC"), conn.fissionConsumer, nats.PullMaxWaiting(512))
 	if err != nil {
 		conn.logger.Fatal("error occurred while consuming message", zap.Error(err))
 	}
@@ -47,7 +44,7 @@ func (conn jetstreamConnector) consumeMessage() {
 			if err != nil {
 				conn.logger.Error("error occurred while unsubscribing", zap.Error(err))
 			}
-			err = conn.jsContext.DeleteConsumer(os.Getenv("STREAM"), FISSION_CONSUMER)
+			err = conn.jsContext.DeleteConsumer(os.Getenv("STREAM"), conn.fissionConsumer)
 			if err != nil {
 				conn.logger.Error("error occurred while closing connection", zap.Error(err))
 			}
@@ -102,6 +99,22 @@ func (conn jetstreamConnector) errorHandler(err error) {
 
 	if len(conn.connectordata.ErrorTopic) == 0 {
 		conn.logger.Warn("Error topic not set")
+		return
+	}
+
+	// we consider the subject is of form - stream.subjectName.
+	// We split it and use the first word to create and stream if not found.
+	// Push the responses to the above created stream.
+	errorTopic := strings.Split(conn.connectordata.ErrorTopic, ".")
+	log.Println("errortopic: ", errorTopic)
+	streamCreationErr := conn.createStream(conn.jsContext, errorTopic[0], conn.connectordata.ErrorTopic)
+	if streamCreationErr != nil {
+		conn.logger.Error("failed to publish response body from http request to topic",
+			zap.Error(streamCreationErr),
+			zap.String("topic", conn.connectordata.ResponseTopic),
+			zap.String("source", conn.connectordata.SourceName),
+			zap.String("http endpoint", conn.connectordata.HTTPEndpoint),
+		)
 		return
 	}
 
@@ -198,26 +211,30 @@ func main() {
 	// Connect to NATS
 	nc, err = nats.Connect(host)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("err while connecting: ", err)
 	}
-	js, err := nc.JetStream() // TODO: need to configure this
+	js, err := nc.JetStream()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("err while getting jetstream context: ", err)
 	}
 
+	if len(os.Getenv("FISSION_CONSUMER")) <= 0 {
+		log.Fatal("err fission consumer mot provided")
+	}
 	_, err = js.AddConsumer(os.Getenv("STREAM"), &nats.ConsumerConfig{
-		Durable:   FISSION_CONSUMER,
+		Durable:   os.Getenv("FISSION_CONSUMER"),
 		AckPolicy: nats.AckExplicitPolicy,
 	})
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("err while creating consumer: ", err)
 	}
 	conn := jetstreamConnector{
-		host:          host,
-		jsContext:     js,
-		connectordata: connectordata,
-		logger:        logger,
+		host:            host,
+		jsContext:       js,
+		connectordata:   connectordata,
+		logger:          logger,
+		fissionConsumer: os.Getenv("FISSION_CONSUMER"),
 	}
 
 	conn.consumeMessage()

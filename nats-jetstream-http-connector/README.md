@@ -24,4 +24,3 @@ The job of the connector is to read messages from the subject in the given strea
 
  
           
-

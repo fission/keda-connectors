@@ -44,7 +44,7 @@ func publishdata(js nats.JetStreamContext) error {
 	if err != nil {
 		log.Println("invalid count provided. Err: ", err)
 		no = 3
-		return nil
+		err = nil
 	}
 	for i := 1; i <= no; i++ {
 		_, err := js.Publish(subjectName, []byte("Test"+strconv.Itoa(i)))

@@ -1,22 +1,24 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
-	"runtime"
+	"os/signal"
 
 	"github.com/nats-io/nats.go"
 )
 
 var (
-	streamName     = "output"
-	streamSubjects = "output.response-topic"
+	streamName        = "output"
+	streamSubjects    = "output.response-topic"
+	streamNameErr     = "errstream"
+	errStreamSubjects = "errstream.error-topic"
 )
 
 func main() {
 	// Connect to NATS
-
 	host := os.Getenv("NATS_SERVER")
 	if host == "" {
 		log.Fatal("received empty host field")
@@ -27,16 +29,49 @@ func main() {
 		log.Fatal(err)
 	}
 	createStream(js, streamName, streamSubjects)
-	// Create durable consumer monitor
-	_, err = js.Subscribe(streamSubjects, func(msg *nats.Msg) {
-		msg.Ack()
-		m := string(msg.Data)
-		fmt.Println(m)
-	}, nats.Durable("output_consumer"), nats.ManualAck())
+	go consumerMessage(js, streamSubjects, streamName, "response_consumer")
 
-	fmt.Println(err)
+	// handle error
+	createStream(js, streamNameErr, errStreamSubjects)
+	consumerMessage(js, errStreamSubjects, streamNameErr, "err_consumer")
+
 	fmt.Println("All messages consumed")
-	runtime.Goexit()
+
+}
+
+func consumerMessage(js nats.JetStreamContext, topic, stream, consumer string) {
+	sub, err := js.PullSubscribe(topic, consumer, nats.PullMaxWaiting(512))
+	if err != nil {
+		fmt.Printf("error occurred while consuming message:  %v", err.Error())
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt)
+
+	for {
+		select {
+		case <-signalChan:
+			ctx.Done()
+			err = sub.Unsubscribe()
+			if err != nil {
+				log.Println("error in unsubscribing: ", err)
+			}
+			err = js.DeleteConsumer(stream, consumer)
+			if err != nil {
+				fmt.Errorf("error occurred while closing connection %s", err.Error())
+			}
+			return
+		default:
+		}
+		msgs, _ := sub.Fetch(10, nats.Context(ctx))
+		for _, msg := range msgs {
+			fmt.Println(string(msg.Data))
+			msg.Ack()
+
+		}
+	}
 
 }
 
