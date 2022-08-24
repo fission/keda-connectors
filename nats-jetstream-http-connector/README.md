@@ -7,9 +7,9 @@ The job of the connector is to read messages from the subject in the given strea
 - `TOPIC`: Subject from which messages are read. It is generally of form - `streamname.subjectname`
 - `HTTP_ENDPOINT`: http endpoint to post request
 - `RESPONSE_TOPIC`: Subject to write responses on success response.  It is generally of form - `response_stream_name.response_subject_name` where streamname should be different then input stream. `response_stream_name` is output stream name. `response_subject_name` subject name where output is send.
-- `RESPONSE_STREAM`-stream to which connector will push messages.
+- `RESPONSE_STREAM`-stream to which connector will push messages post successful invocation of the consumer function.
 - `ERROR_TOPIC`: Subject to write errors on failure.  It is generally of form - `err_response_stream_name.error_subject_name` where streamname should be different then input stream. `err_response_stream_name` is error stream name. `error_subject_name` subject name where error output is send.
-- `Error_STREAM`- -stream to which connector will push error messages.
+- `ERROR_STREAM`- stream to which connector will push messages post non-successful invocation of the consumer function.
 - `MAX_RETRIES`: Maximum number of times an http endpoint will be retried upon failure.
 - `CONTENT_TYPE`: Content type used while creating post request
 - `NATS_SERVER`: NATS server address. It can be a remote address `nats://127.0.0.1:4222` or in case deployed in Kubernetes, can reached using corresponding service name

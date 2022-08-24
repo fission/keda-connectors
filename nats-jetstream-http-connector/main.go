@@ -102,7 +102,7 @@ func (conn jetstreamConnector) handleHTTPRequest(msg *nats.Msg) {
 func (conn jetstreamConnector) errorHandler(err error) {
 
 	if len(conn.connectordata.ErrorTopic) == 0 {
-		conn.logger.Warn("error topic not set")
+		conn.logger.Warn("error topic not set in, ", zap.String("ERROR_STREAM: ", os.Getenv("ERROR_STREAM")))
 		return
 	}
 
@@ -167,7 +167,7 @@ func (conn jetstreamConnector) getStream(js nats.JetStreamContext, streamName st
 			zap.String("name", streamName))
 	}
 	if stream == nil {
-		return fmt.Errorf("output stream not found")
+		return fmt.Errorf("output stream not found, streamName: %s", streamName)
 	}
 	return nil
 }
