@@ -2,10 +2,10 @@ name: Integration Test WF
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 env:
   KIND_URL: https://kind.sigs.k8s.io/dl
   KIND_VER: v0.8.1
