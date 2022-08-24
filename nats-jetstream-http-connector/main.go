@@ -2,17 +2,21 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 
 	"github.com/fission/keda-connectors/common"
+)
+
+const (
+	batchCount = 10
 )
 
 type jetstreamConnector struct {
@@ -39,7 +43,7 @@ func (conn jetstreamConnector) consumeMessage() {
 		select {
 		case <-signalChan:
 			ctx.Done()
-			conn.logger.Info("Received an interrupt, unsubscribing and closing connection...")
+			conn.logger.Info("received an interrupt, unsubscribing and closing connection...")
 			err = sub.Unsubscribe()
 			if err != nil {
 				conn.logger.Error("error occurred while unsubscribing", zap.Error(err))
@@ -51,7 +55,7 @@ func (conn jetstreamConnector) consumeMessage() {
 			return
 		default:
 		}
-		msgs, _ := sub.Fetch(10, nats.Context(ctx))
+		msgs, _ := sub.Fetch(batchCount, nats.Context(ctx))
 		for _, msg := range msgs {
 			conn.handleHTTPRequest(msg)
 
@@ -87,7 +91,7 @@ func (conn jetstreamConnector) handleHTTPRequest(msg *nats.Msg) {
 					conn.logger.Info(err.Error())
 					conn.errorHandler(err)
 				}
-				conn.logger.Info("Done processing message",
+				conn.logger.Info("done processing message",
 					zap.String("messsage", string(body)))
 			}
 		}
@@ -98,23 +102,17 @@ func (conn jetstreamConnector) handleHTTPRequest(msg *nats.Msg) {
 func (conn jetstreamConnector) errorHandler(err error) {
 
 	if len(conn.connectordata.ErrorTopic) == 0 {
-		conn.logger.Warn("Error topic not set")
+		conn.logger.Warn("error topic not set")
 		return
 	}
 
 	// we consider the subject is of form - stream.subjectName.
-	// We split it and use the first word to create and stream if not found.
-	// Push the responses to the above created stream.
-	errorTopic := strings.Split(conn.connectordata.ErrorTopic, ".")
-	conn.logger.Debug("errortopic:", zap.String("topic: ", errorTopic[0]))
-
-	streamCreationErr := conn.createStream(conn.jsContext, errorTopic[0], conn.connectordata.ErrorTopic)
+	streamCreationErr := conn.getStream(conn.jsContext, os.Getenv("ERROR_STREAM"))
 	if streamCreationErr != nil {
-		conn.logger.Error("failed to publish response body from http request to topic",
+		conn.logger.Error("failed to find error output stream",
 			zap.Error(streamCreationErr),
 			zap.String("topic", conn.connectordata.ResponseTopic),
-			zap.String("source", conn.connectordata.SourceName),
-			zap.String("http endpoint", conn.connectordata.HTTPEndpoint),
+			zap.String("error stream", os.Getenv("Error_STREAM")),
 		)
 		return
 	}
@@ -137,16 +135,14 @@ func (conn jetstreamConnector) responseHandler(response []byte) bool {
 	}
 
 	// we consider the subject is of form - stream.subjectName.
-	// We split it and use the first word to create and stream if not found.
 	// Push the responses to the above created stream.
-	responseTopic := strings.Split(conn.connectordata.ResponseTopic, ".")
-	err := conn.createStream(conn.jsContext, responseTopic[0], conn.connectordata.ResponseTopic)
+	responseStream := os.Getenv("RESPONSE_STREAM")
+	err := conn.getStream(conn.jsContext, responseStream)
 	if err != nil {
-		conn.logger.Error("failed to publish response body from http request to topic",
+		conn.logger.Error("failed to find response stream",
 			zap.Error(err),
 			zap.String("topic", conn.connectordata.ResponseTopic),
-			zap.String("source", conn.connectordata.SourceName),
-			zap.String("http endpoint", conn.connectordata.HTTPEndpoint),
+			zap.String("stream", responseStream),
 		)
 		return false
 	}
@@ -164,25 +160,14 @@ func (conn jetstreamConnector) responseHandler(response []byte) bool {
 }
 
 // createStream creates a stream by using JetStreamContext
-func (conn jetstreamConnector) createStream(js nats.JetStreamContext, streamName string, streamSubjects string) error {
+func (conn jetstreamConnector) getStream(js nats.JetStreamContext, streamName string) error {
 	stream, err := js.StreamInfo(streamName)
 	if err != nil {
-		conn.logger.Info("stream not present will create one",
+		conn.logger.Info("stream not present,",
 			zap.String("name", streamName))
 	}
 	if stream == nil {
-		conn.logger.Info("creating stream",
-			zap.String("name", streamName),
-			zap.String("and subjects ", streamSubjects))
-		_, err = js.AddStream(&nats.StreamConfig{
-			Name:     streamName,
-			Subjects: []string{streamSubjects},
-		})
-		if err != nil {
-			conn.logger.Error("failed to publish response body from http request to topic",
-				zap.Error(err))
-			return err
-		}
+		return fmt.Errorf("output stream not found")
 	}
 	return nil
 }
@@ -220,7 +205,7 @@ func main() {
 	}
 
 	if len(os.Getenv("FISSION_CONSUMER")) <= 0 {
-		logger.Fatal("err fission consumer mot provided")
+		logger.Fatal("err fission consumer not provided")
 	}
 	_, err = js.AddConsumer(os.Getenv("STREAM"), &nats.ConsumerConfig{
 		Durable:   os.Getenv("FISSION_CONSUMER"),
