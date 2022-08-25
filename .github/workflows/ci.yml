@@ -429,6 +429,15 @@ jobs:
         run: |
           cd nats-jetstream-http-connector/test/jetstream
           kubectl apply -f jetstream-server.yaml 
+      - name: Publish Nats messages in a stream
+        run: |
+          cd nats-jetstream-http-connector/test/producer/
+          kubectl apply -f deployment.yaml
+          sleep 30s
+      - name: Bring up the Nats consumer stream and Listen for incoming messages
+        run: |
+          cd nats-jetstream-http-connector/test/consumer/
+          kubectl apply -f deployment.yaml
       - name: Deploy Nats Keda Connector and Keda ScaledObject
         run: |
           cd nats-jetstream-http-connector/test/kubernetes/ 
@@ -436,17 +445,9 @@ jobs:
           sleep 30s
           kubectl apply -f keda-ScaledObject.yaml
           sleep 30s
-      - name: Publish Nats messages in a queue
+      - name: Get Nats consumed messages from stream
         run: |
-          cd nats-jetstream-http-connector/test/producer/
-          kubectl apply -f deployment.yaml
-          sleep 30s
-      - name: Bring up the Nats consumer queue and Listen for incoming messages
-        run: |
-          cd nats-jetstream-http-connector/test/consumer/
-          kubectl apply -f deployment.yaml
-      - name: Get Nats consumed messages from queue
-        run: |
-          sleep 30s
-          kubectl logs deployment.apps/consumer-deployment
-          kubectl logs deployment.apps/consumer-deployment 
+          # sleep 90s
+          kubectl wait pod -l app=consumer --for=condition=ready --timeout=-1s
+          kubectl logs deployment.apps/consumer-deployment | grep -q "consumed"
+          echo $?

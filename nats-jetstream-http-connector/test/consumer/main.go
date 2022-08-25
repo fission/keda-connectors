@@ -81,6 +81,8 @@ func consumerMessage(logger *zap.Logger, js nats.JetStreamContext, topic, stream
 		msgs, _ := sub.Fetch(batchCount, nats.Context(ctx))
 		for _, msg := range msgs {
 			fmt.Println("consumed message: ", string(msg.Data))
+			// Testing will remove this statement if test cases pass.
+			log.Println("consumed message: ", string(msg.Data))
 			msg.Ack()
 
 		}
