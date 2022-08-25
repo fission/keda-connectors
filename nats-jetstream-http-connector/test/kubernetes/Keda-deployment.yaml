@@ -25,12 +25,8 @@ spec:
               value: http://http-service.default.svc.cluster.local:8080/post
             - name: ERROR_TOPIC
               value: output.error-topic
-            - name: ERROR_STREAM
-              value: output
             - name: RESPONSE_TOPIC
               value: output.response-topic
-            - name: RESPONSE_STREAM
-              value: output
             - name: CONTENT_TYPE
               value: application/json
             - name: MAX_RETRIES
@@ -39,8 +35,6 @@ spec:
               value: "nats://nats-jetstream:4222"
             - name: STREAM
               value: input
-            - name: FISSION_CONSUMER
-              value: input_consumer
             - name: CONSUMER
               value: output
             

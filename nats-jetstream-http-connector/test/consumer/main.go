@@ -18,8 +18,8 @@ const (
 var (
 	streamName        = "output"
 	streamSubjects    = "output.response-topic"
-	streamNameErr     = "errstream"
-	errStreamSubjects = "errstream.error-topic"
+	streamNameErr     = "output"
+	errStreamSubjects = "output.error-topic"
 )
 
 func main() {
@@ -39,18 +39,26 @@ func main() {
 	if err != nil {
 		logger.Fatal("err: ", zap.Error(err))
 	}
-	createStream(logger, js, streamName, streamSubjects)
-	go consumerMessage(logger, js, streamSubjects, streamName, "response_consumer")
-
-	// handle error
-	createStream(logger, js, streamNameErr, errStreamSubjects)
-	consumerMessage(logger, js, errStreamSubjects, streamNameErr, "err_consumer")
+	go consumerMessage(logger, js, streamName, streamSubjects, "response_consumer1")
+	consumerMessage(logger, js, streamNameErr, errStreamSubjects, "err_consumer1")
 
 	fmt.Println("All messages consumed")
 
 }
 
-func consumerMessage(logger *zap.Logger, js nats.JetStreamContext, topic, stream, consumer string) {
+func consumerMessage(logger *zap.Logger, js nats.JetStreamContext, stream, topic, consumer string) {
+
+	fmt.Println(topic)
+
+	/*
+		// Push subscriber
+			js.Subscribe(topic, func(msg *nats.Msg) {
+				msg.Ack()
+
+				log.Println(string(msg.Data))
+			}, nats.Durable(consumer), nats.ManualAck()) // Durable is required because if we allow jetstream to create new consumer we will be reading records from the start from the stream.
+			runtime.Goexit()
+	*/
 	sub, err := js.PullSubscribe(topic, consumer, nats.PullMaxWaiting(512))
 	if err != nil {
 		fmt.Printf("error occurred while consuming message:  %v", err.Error())
@@ -73,7 +81,7 @@ func consumerMessage(logger *zap.Logger, js nats.JetStreamContext, topic, stream
 			}
 			err = js.DeleteConsumer(stream, consumer)
 			if err != nil {
-				fmt.Errorf("error occurred while closing connection %s", err.Error())
+				fmt.Errorf("error occurred while closing connection %v", err.Error())
 			}
 			return
 		default:
@@ -81,31 +89,9 @@ func consumerMessage(logger *zap.Logger, js nats.JetStreamContext, topic, stream
 		msgs, _ := sub.Fetch(batchCount, nats.Context(ctx))
 		for _, msg := range msgs {
 			fmt.Println("consumed message: ", string(msg.Data))
-			// Testing will remove this statement if test cases pass.
-			log.Println("consumed message: ", string(msg.Data))
 			msg.Ack()
 
 		}
 	}
 
-}
-
-// createStream creates a stream by using JetStreamContext
-func createStream(logger *zap.Logger, js nats.JetStreamContext, streamName string, streamSubjects string) error {
-	stream, _ := js.StreamInfo(streamName)
-
-	if stream == nil {
-
-		_, err := js.AddStream(&nats.StreamConfig{
-			Name:     streamName,
-			Subjects: []string{streamSubjects},
-		})
-		if err != nil {
-			logger.Error("Error: ",
-				zap.Error(err),
-			)
-			return err
-		}
-	}
-	return nil
 }

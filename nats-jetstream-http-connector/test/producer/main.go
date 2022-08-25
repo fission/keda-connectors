@@ -13,6 +13,8 @@ const (
 	streamName     = "input"
 	streamSubjects = "input.*"
 	subjectName    = "input.created"
+	outputStream   = "output"
+	outputSubject  = "output.*"
 )
 
 func main() {
@@ -33,11 +35,19 @@ func main() {
 	js, err := nc.JetStream()
 	checkErr(logger, err)
 	// Creates stream
-	err = createStream(logger, js)
+	err = createStream(logger, js, streamName, streamSubjects)
 	checkErr(logger, err)
 	// Create records by publishing messages
 	err = publishdata(logger, js)
 	checkErr(logger, err)
+
+	// Creates stream for output
+	err = createStream(logger, js, outputStream, outputSubject)
+	checkErr(logger, err)
+
+	// // Creates stream for output error
+	// err = createStream(logger, js, "errstream", "errstream.*")
+	// checkErr(logger, err)
 
 	// This is to run the process forever and presents container to get restarted
 	select {}
@@ -64,7 +74,7 @@ func publishdata(logger *zap.Logger, js nats.JetStreamContext) error {
 }
 
 // createStream creates a stream by using JetStreamContext
-func createStream(logger *zap.Logger, js nats.JetStreamContext) error {
+func createStream(logger *zap.Logger, js nats.JetStreamContext, streamName, streamSubjects string) error {
 	stream, err := js.StreamInfo(streamName)
 	if err != nil {
 		logger.Info("stream not found: ", zap.Error(err))
