@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"runtime"
+	"os/signal"
 
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
@@ -20,6 +20,7 @@ type jetstreamConnector struct {
 	jsContext       nats.JetStreamContext
 	logger          *zap.Logger
 	consumer        string
+	nc              *nats.Conn
 }
 
 func main() {
@@ -54,6 +55,7 @@ func main() {
 		jsContext:       js,
 		logger:          logger,
 		consumer:        consumer,
+		nc:              nc,
 	}
 	err = conn.consumeMessage()
 	if err != nil {
@@ -62,8 +64,11 @@ func main() {
 }
 
 func (conn jetstreamConnector) consumeMessage() error {
+
+	forever := make(chan bool)
+
 	// Create durable consumer monitor
-	_, err := conn.jsContext.Subscribe(conn.connectordata.Topic, func(msg *nats.Msg) {
+	sub, err := conn.jsContext.Subscribe(conn.connectordata.Topic, func(msg *nats.Msg) {
 		conn.handleHTTPRequest(msg)
 		// Durable is required because if we allow jetstream to create new consumer we
 		// will be reading records from the start from the stream.
@@ -72,7 +77,24 @@ func (conn jetstreamConnector) consumeMessage() error {
 		conn.logger.Debug("error occurred while parsing metadata", zap.Error(err))
 		return err
 	}
-	runtime.Goexit()
+
+	// Wait for a SIGINT (perhaps triggered by user with CTRL-C)
+	// Run cleanup when signal is received
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt)
+	go func() {
+		for range signalChan {
+			conn.logger.Info("Received an interrupt, unsubscribing and closing connection...")
+			err = sub.Unsubscribe()
+			if err != nil {
+				conn.logger.Error("error occurred while unsubscribing", zap.Error(err))
+			}
+			conn.nc.Close()
+			forever <- true
+		}
+	}()
+	<-forever
+
 	return nil
 }
 

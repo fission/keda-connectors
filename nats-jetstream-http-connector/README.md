@@ -5,13 +5,13 @@ JetStream NATS KEDA connector image can be used in the Kubernetes deployment as 
 The job of the connector is to read messages from the subject in the given stream, call an HTTP endpoint with the body of the message, and write response or error in the response_topic. Following enviornment variables are used by connector image as configuration to connect and authenticate with NATs server which should be defined in the Kubernetes deployment manifest.
 
 - `TOPIC`: Subject from which messages are read. It is generally of form - `streamname.subjectname`
-- `HTTP_ENDPOINT`: http endpoint to post request
-- `RESPONSE_TOPIC`: Subject to write responses on success response.  It is generally of form - `response_stream_name.response_subject_name` where streamname should be different then input stream. `response_stream_name` is output stream name. `response_subject_name` subject name where output is send.
-- `ERROR_TOPIC`: Subject to write errors on failure.  It is generally of form - `err_response_stream_name.error_subject_name` where streamname should be different then input stream. `err_response_stream_name` is error stream name. `error_subject_name` subject name where error output is send.
-- `MAX_RETRIES`: Maximum number of times an http endpoint will be retried upon failure.
+- `RESPONSE_TOPIC`: Subject to write responses on success response.  It is generally of form - `response_stream_name.response_subject_name` where streamname should be different then input stream. `response_stream_name` is output stream name. `response_subject_name` subject name where output is send
+- `ERROR_TOPIC`: Subject to write errors on failure.  It is generally of form - `err_response_stream_name.error_subject_name` where streamname should be different then input stream. `err_response_stream_name` is error stream name. `error_subject_name` subject name where error output is send
+- `MAX_RETRIES`: Maximum number of times an http endpoint will be retried upon failure
 - `CONTENT_TYPE`: Content type used while creating post request
-- `NATS_SERVER`: NATS server address. It can be a remote address `nats://127.0.0.1:4222` or in case deployed in Kubernetes, can reached using corresponding service name
 - `STREAM`: stream from which connector will read messages.
+- `NATS_SERVER_MONITORING_ENDPOINT`: Location of the Nats Jetstream Monitoring
+- `NATS_SERVER`: NATS server address. It can be a remote address `nats://127.0.0.1:4222` or in case deployed in Kubernetes, can reached using corresponding service name
 - `CONSUMER`: this is the consumer which fission uses for monitoring and creating resources(eg, creating pods)
 
 
