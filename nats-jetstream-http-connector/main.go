@@ -37,7 +37,7 @@ func main() {
 	nc, _ := nats.Connect(host)
 	js, err := nc.JetStream()
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("error while getting jetstream context:", zap.Error(err))
 	}
 
 	defer func() {
