@@ -1,13 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"runtime"
-	"strings"
 
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
@@ -49,22 +47,6 @@ func main() {
 		logger.Fatal("error occurred while parsing metadata", zap.Error(err))
 	}
 
-	err = validateStream(js, connectordata.Topic, logger)
-	if err != nil {
-		logger.Fatal("error occurred while validating streams", zap.Error(err))
-	}
-	// input stream
-	err = validateStream(js, connectordata.ResponseTopic, logger)
-	if err != nil {
-		logger.Fatal("error occurred while validating streams", zap.Error(err))
-	}
-
-	// output stream
-	err = validateStream(js, connectordata.ErrorTopic, logger)
-	if err != nil {
-		logger.Fatal("error occurred while validating streams", zap.Error(err))
-	}
-
 	conn := jetstreamConnector{
 		host:            host,
 		fissionConsumer: consumer,
@@ -73,26 +55,13 @@ func main() {
 		logger:          logger,
 		consumer:        consumer,
 	}
-	err = conn.consumerMessage()
+	err = conn.consumeMessage()
 	if err != nil {
 		conn.logger.Fatal("error occurred while parsing metadata", zap.Error(err))
 	}
 }
 
-func validateStream(js nats.JetStreamContext, topic string, logger *zap.Logger) (err error) {
-
-	// check if stream present in NATS server
-	streamNTopic := strings.Split(topic, ".")
-	stream := streamNTopic[0]
-	info, err := js.StreamInfo(stream)
-	if err != nil || info == nil {
-		err = fmt.Errorf("stream not found: %s", stream)
-		logger.Debug("stream not found, ", zap.Error(err))
-	}
-	return
-}
-
-func (conn jetstreamConnector) consumerMessage() error {
+func (conn jetstreamConnector) consumeMessage() error {
 	// Create durable consumer monitor
 	_, err := conn.jsContext.Subscribe(conn.connectordata.Topic, func(msg *nats.Msg) {
 		conn.handleHTTPRequest(msg)
