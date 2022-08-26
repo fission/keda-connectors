@@ -35,8 +35,6 @@ spec:
               value: "nats://nats-jetstream:4222"
             - name: STREAM
               value: input
-            - name: FISSION_CONSUMER
-              value: input_consumer
             - name: CONSUMER
               value: output
             

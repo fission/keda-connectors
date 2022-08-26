@@ -1,59 +1,97 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
-	"runtime"
+	"os/signal"
 
 	"github.com/nats-io/nats.go"
+	"go.uber.org/zap"
+)
+
+const (
+	batchCount = 10
 )
 
 var (
-	streamName     = "output"
-	streamSubjects = "output.response-topic"
+	streamName        = "output"
+	streamSubjects    = "output.response-topic"
+	streamNameErr     = "output"
+	errStreamSubjects = "output.error-topic"
 )
 
 func main() {
-	// Connect to NATS
 
+	logger, err := zap.NewProduction()
+	if err != nil {
+		log.Fatalf("can't initialize zap logger: %v", err)
+	}
+
+	// Connect to NATS
 	host := os.Getenv("NATS_SERVER")
 	if host == "" {
-		log.Fatal("received empty host field")
+		logger.Fatal("received empty host field")
 	}
 	nc, _ := nats.Connect(host)
 	js, err := nc.JetStream()
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("err: ", zap.Error(err))
 	}
-	createStream(js, streamName, streamSubjects)
-	// Create durable consumer monitor
-	_, err = js.Subscribe(streamSubjects, func(msg *nats.Msg) {
-		msg.Ack()
-		m := string(msg.Data)
-		fmt.Println(m)
-	}, nats.Durable("output_consumer"), nats.ManualAck())
+	go consumerMessage(logger, js, streamName, streamSubjects, "response_consumer1")
+	consumerMessage(logger, js, streamNameErr, errStreamSubjects, "err_consumer1")
 
-	fmt.Println(err)
 	fmt.Println("All messages consumed")
-	runtime.Goexit()
 
 }
 
-// createStream creates a stream by using JetStreamContext
-func createStream(js nats.JetStreamContext, streamName string, streamSubjects string) error {
-	stream, _ := js.StreamInfo(streamName)
+func consumerMessage(logger *zap.Logger, js nats.JetStreamContext, stream, topic, consumer string) {
 
-	if stream == nil {
+	fmt.Println(topic)
 
-		_, err := js.AddStream(&nats.StreamConfig{
-			Name:     streamName,
-			Subjects: []string{streamSubjects},
-		})
-		if err != nil {
-			log.Println("Error: ", err)
-			return err
+	/*
+		// Push subscriber
+			js.Subscribe(topic, func(msg *nats.Msg) {
+				msg.Ack()
+
+				log.Println(string(msg.Data))
+			}, nats.Durable(consumer), nats.ManualAck()) // Durable is required because if we allow jetstream to create new consumer we will be reading records from the start from the stream.
+			runtime.Goexit()
+	*/
+	sub, err := js.PullSubscribe(topic, consumer, nats.PullMaxWaiting(512))
+	if err != nil {
+		fmt.Printf("error occurred while consuming message:  %v", err.Error())
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt)
+
+	for {
+		select {
+		case <-signalChan:
+			ctx.Done()
+			err = sub.Unsubscribe()
+			if err != nil {
+				logger.Error("error in unsubscribing: ",
+					zap.Error(err),
+				)
+			}
+			err = js.DeleteConsumer(stream, consumer)
+			if err != nil {
+				fmt.Errorf("error occurred while closing connection %v", err.Error())
+			}
+			return
+		default:
+		}
+		msgs, _ := sub.Fetch(batchCount, nats.Context(ctx))
+		for _, msg := range msgs {
+			fmt.Println("consumed message: ", string(msg.Data))
+			msg.Ack()
+
 		}
 	}
-	return nil
+
 }
