@@ -45,10 +45,6 @@ func main() {
 	err = createStream(logger, js, outputStream, outputSubject)
 	checkErr(logger, err)
 
-	// // Creates stream for output error
-	// err = createStream(logger, js, "errstream", "errstream.*")
-	// checkErr(logger, err)
-
 	// This is to run the process forever and presents container to get restarted
 	select {}
 }

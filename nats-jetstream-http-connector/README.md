@@ -12,7 +12,7 @@ The job of the connector is to read messages from the subject in the given strea
 - `CONTENT_TYPE`: Content type used while creating post request
 - `NATS_SERVER`: NATS server address. It can be a remote address `nats://127.0.0.1:4222` or in case deployed in Kubernetes, can reached using corresponding service name
 - `STREAM`: stream from which connector will read messages.
-- `CONSUMER`: this is the consumer which fission uses for monitoring
+- `CONSUMER`: this is the consumer which fission uses for monitoring and creating resources(eg, creating pods)
 
 
 
@@ -20,4 +20,4 @@ The job of the connector is to read messages from the subject in the given strea
 * To setup and run nats streaming server, reference https://docs.nats.io/nats-server/installation#installing-on-kubernetes-with-nats-operator
 * For running the connecter with fission e.g.  
 
-```fission mqt create --name jetstreamtest --function helloworld --mqtype nats-jetstream --mqtkind keda --topic input.created --resptopic output.response-topic --errortopic erroutput.error-topic --maxretries 3 --metadata stream=input --metadata fissionConsumer=fission_consumer --metadata natsServerMonitoringEndpoint=nats-jetstream.default.svc.cluster.local:8222 --metadata responseStream=output --metadata errorStream=erroutput --metadata consumer=fission_consumer```
+```fission mqt create --name jetstreamtest --function helloworld --mqtype nats-jetstream --mqtkind keda --topic input.created --resptopic output.response-topic --errortopic erroutput.error-topic --maxretries 3 --metadata stream=input --metadata fissionConsumer=fission_consumer --metadata natsServerMonitoringEndpoint=nats-jetstream.default.svc.cluster.local:8222 --metadata consumer=fission_consumer```
