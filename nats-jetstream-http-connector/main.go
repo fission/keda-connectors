@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"io"
 	"log"
 	"net/http"
@@ -65,8 +66,6 @@ func main() {
 
 func (conn jetstreamConnector) consumeMessage() error {
 
-	forever := make(chan bool)
-
 	// Create durable consumer monitor
 	sub, err := conn.jsContext.Subscribe(conn.connectordata.Topic, func(msg *nats.Msg) {
 		conn.handleHTTPRequest(msg)
@@ -78,22 +77,22 @@ func (conn jetstreamConnector) consumeMessage() error {
 		return err
 	}
 
-	// Wait for a SIGINT (perhaps triggered by user with CTRL-C)
-	// Run cleanup when signal is received
-	signalChan := make(chan os.Signal, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	signalChan := make(chan os.Signal, 2)
 	signal.Notify(signalChan, os.Interrupt)
 	go func() {
-		for range signalChan {
-			conn.logger.Info("Received an interrupt, unsubscribing and closing connection...")
-			err = sub.Unsubscribe()
-			if err != nil {
-				conn.logger.Error("error occurred while unsubscribing", zap.Error(err))
-			}
-			conn.nc.Close()
-			forever <- true
-		}
+		sig := <-signalChan
+		conn.logger.Info("received signal", zap.String("signal", sig.String()))
+		cancel()
+		<-signalChan
+		panic("double signal received")
 	}()
-	<-forever
+	<-ctx.Done()
+	conn.logger.Info("unsubscribing and closing connection...")
+	err = sub.Unsubscribe()
+	if err != nil {
+		conn.logger.Error("error while unsubscribing", zap.Error(err))
+	}
 
 	return nil
 }
