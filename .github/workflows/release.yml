@@ -2,7 +2,7 @@ name: Release
 on:
   push:
     branches:
-      - master
+      - main
     paths:
       - "**/version"
 jobs:
@@ -12,7 +12,7 @@ jobs:
       packages: ${{ steps.filter.outputs.changes }}
     steps:
       - name: Checkout the current repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - uses: dorny/paths-filter@v2
         id: filter
         with:
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: get version
         run: cd ${{ matrix.run }}; version=$(cat version);echo "version=$version" >> $GITHUB_ENV
       - name: Login to DockerHub
@@ -50,7 +50,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and Push the docker image
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           context: ${{ matrix.run }}
           tags: fission/keda-${{ matrix.run }}:latest,fission/keda-${{ matrix.run }}:${{env.version}}
