@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
@@ -22,12 +23,14 @@ type jetstreamConnector struct {
 	logger          *zap.Logger
 	consumer        string
 	nc              *nats.Conn
+	ackwait         string
 }
 
 func main() {
 
 	host := os.Getenv("NATS_SERVER")
 	consumer := os.Getenv("CONSUMER")
+	ackwait := os.Getenv("ACKWAIT")
 
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -57,6 +60,7 @@ func main() {
 		logger:          logger,
 		consumer:        consumer,
 		nc:              nc,
+		ackwait:         ackwait,
 	}
 	err = conn.consumeMessage()
 	if err != nil {
@@ -64,14 +68,33 @@ func main() {
 	}
 }
 
+func (conn jetstreamConnector) getAckwait() (time.Duration, error) {
+	ackwait := 30*time.Second
+	if conn.ackwait != "" {
+		var err error
+		ackwait, err = time.ParseDuration(conn.ackwait)
+		if err != nil {
+			conn.logger.Debug("error occurred while parsing ackwait", zap.Error(err))
+			return ackwait, err
+		}
+	}
+	return ackwait, nil
+}
+
+
 func (conn jetstreamConnector) consumeMessage() error {
+	// Establish ackwait
+	ackwait, err := conn.getAckwait()
+	if err != nil {
+		return err
+	}
 
 	// Create durable consumer monitor
 	sub, err := conn.jsContext.Subscribe(conn.connectordata.Topic, func(msg *nats.Msg) {
 		conn.handleHTTPRequest(msg)
 		// Durable is required because if we allow jetstream to create new consumer we
 		// will be reading records from the start from the stream.
-	}, nats.Durable(conn.consumer), nats.ManualAck())
+	}, nats.Durable(conn.consumer), nats.ManualAck(), nats.AckWait(ackwait))
 	if err != nil {
 		conn.logger.Debug("error occurred while parsing metadata", zap.Error(err))
 		return err
@@ -124,7 +147,7 @@ func (conn jetstreamConnector) handleHTTPRequest(msg *nats.Msg) {
 					conn.errorHandler(err)
 				}
 				conn.logger.Info("done processing message",
-					zap.String("messsage", string(body)))
+					zap.String("message", string(body)))
 			}
 		}
 	}
