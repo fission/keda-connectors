@@ -15,10 +15,11 @@ The job of the connector is to read messages from the subject in the given strea
 - `CONSUMER`: this is the consumer which fission uses for monitoring and creating resources(eg, creating pods)
 - `ACCOUNT`: Name of the NATS account. `$G` is default when no account is configured.
 - `ACKWAIT`: A time.Duration formatted string for how long to wait for an acknowledgement that a message has been processed. Defaults to `30s`. Cannot be modified on a durable consumer without manually deleting the consumer.
+- `CONCURRENT`: Number of concurrent messages to process at one time. Defaults to `1`.
 
 ## Resources
 
 - To setup and run nats streaming server, reference <https://docs.nats.io/nats-server/installation#installing-on-kubernetes-with-nats-operator>
 - For running the connecter with fission e.g.
 
-```fission mqt create --name jetstreamtest --function helloworld --mqtype nats-jetstream --mqtkind keda --topic input.created --resptopic output.response-topic --errortopic erroutput.error-topic --maxretries 3 --metadata stream=input --metadata natsServerMonitoringEndpoint=nats-jetstream.default.svc.cluster.local:8222 --metadata natsServer=nats://nats-jetstream.default.svc.cluster.local:4222 --metadata consumer=fission_consumer --metadata account=\$G --metadata ackwait=2m```
+```fission mqt create --name jetstreamtest --function helloworld --mqtype nats-jetstream --mqtkind keda --topic input.created --resptopic output.response-topic --errortopic erroutput.error-topic --maxretries 3 --metadata stream=input --metadata natsServerMonitoringEndpoint=nats-jetstream.default.svc.cluster.local:8222 --metadata natsServer=nats://nats-jetstream.default.svc.cluster.local:4222 --metadata consumer=fission_consumer --metadata account=\$G --metadata ackwait=2m --metadata concurrent=10```
