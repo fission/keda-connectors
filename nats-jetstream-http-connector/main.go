@@ -69,7 +69,7 @@ func main() {
 }
 
 func (conn jetstreamConnector) getAckwait() (time.Duration, error) {
-	ackwait := 30*time.Second
+	ackwait := 30 * time.Second
 	if conn.ackwait != "" {
 		var err error
 		ackwait, err = time.ParseDuration(conn.ackwait)
@@ -80,7 +80,6 @@ func (conn jetstreamConnector) getAckwait() (time.Duration, error) {
 	}
 	return ackwait, nil
 }
-
 
 func (conn jetstreamConnector) consumeMessage() error {
 	// Establish ackwait
