@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"golang.org/x/exp/maps"
 	"io"
 	"log"
 	"net/http"
@@ -120,7 +121,14 @@ func (conn jetstreamConnector) consumeMessage() error {
 }
 
 func (conn jetstreamConnector) handleHTTPRequest(msg *nats.Msg) {
-
+	/*
+		b, m_err := json.MarshalIndent(msg.Header, "", "  ")
+		if m_err == nil {
+			conn.logger.Info("msg.Header: " + string(b))
+		} else {
+			conn.logger.Info("Error MarshalIndent", zap.Error(m_err))
+		}
+	*/
 	headers := http.Header{
 		"Topic":        {conn.connectordata.Topic},
 		"RespTopic":    {conn.connectordata.ResponseTopic},
@@ -128,6 +136,22 @@ func (conn jetstreamConnector) handleHTTPRequest(msg *nats.Msg) {
 		"Content-Type": {conn.connectordata.ContentType},
 		"Source-Name":  {conn.connectordata.SourceName},
 	}
+	/*
+		b, m_err = json.MarshalIndent(headers, "", "  ")
+		if m_err == nil {
+			conn.logger.Info("headers in: " + string(b))
+		} else {
+			conn.logger.Info("Error MarshalIndent", zap.Error(m_err))
+		}
+	*/
+	maps.Copy(headers, msg.Header)
+	/*
+		b, m_err = json.MarshalIndent(headers, "", "  ")
+		if m_err == nil {
+			conn.logger.Info("headers out: " + string(b))
+		} else {
+			conn.logger.Info("Error MarshalIndent", zap.Error(m_err))
+		}*/
 	resp, err := common.HandleHTTPRequest(string(msg.Data), headers, conn.connectordata, conn.logger)
 	if err != nil {
 		conn.logger.Info(err.Error())

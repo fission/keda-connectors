@@ -6,6 +6,7 @@ require (
 	github.com/fission/keda-connectors/common v0.0.0-20220323124418-91dba0ebebfd
 	github.com/nats-io/nats.go v1.16.0
 	go.uber.org/zap v1.16.0
+	golang.org/x/exp v0.0.0-20221028150844-83b7d23a625f
 )
 
 require (
@@ -17,6 +18,5 @@ require (
 	go.uber.org/atomic v1.6.0 // indirect
 	go.uber.org/multierr v1.5.0 // indirect
 	golang.org/x/crypto v0.0.0-20210314154223-e6e6c4f2bb5b // indirect
-	golang.org/x/tools v0.0.0-20200103221440-774c71fcf114 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 )
