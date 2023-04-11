@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"golang.org/x/exp/maps"
 	"io"
 	"log"
 	"net/http"
@@ -128,6 +129,9 @@ func (conn jetstreamConnector) handleHTTPRequest(msg *nats.Msg) {
 		"Content-Type": {conn.connectordata.ContentType},
 		"Source-Name":  {conn.connectordata.SourceName},
 	}
+
+	maps.Copy(headers, msg.Header) // Add and overwrite headers from Jetstream
+
 	resp, err := common.HandleHTTPRequest(string(msg.Data), headers, conn.connectordata, conn.logger)
 	if err != nil {
 		conn.logger.Info(err.Error())
