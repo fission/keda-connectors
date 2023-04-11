@@ -46,7 +46,7 @@ jobs:
       - name: Install Kind Cluster
         uses: engineerd/setup-kind@v0.5.0
         with:
-          version: v0.11.1
+          version: v0.18.0
       - name: Install KEDA using HELM
         run: |
           cd test/
@@ -123,7 +123,7 @@ jobs:
       - name: Install Kind Cluster
         uses: engineerd/setup-kind@v0.5.0
         with:
-          version: v0.11.1
+          version: v0.18.0
       - name: Install KEDA using HELM
         run: |
           cd test/
@@ -192,7 +192,7 @@ jobs:
       - name: Install Kind Cluster
         uses: engineerd/setup-kind@v0.5.0
         with:
-          version: v0.11.1
+          version: v0.18.0
       - name: Install KEDA using HELM
         run: |
           cd test/
@@ -247,7 +247,7 @@ jobs:
       - name: Install Kind Cluster
         uses: engineerd/setup-kind@v0.5.0
         with:
-          version: v0.11.1
+          version: v0.18.0
       - name: Install KEDA using HELM
         run: |
           cd test/
@@ -321,7 +321,7 @@ jobs:
       - name: Install Kind Cluster
         uses: engineerd/setup-kind@v0.5.0
         with:
-          version: v0.11.1
+          version: v0.18.0
       - name: Install KEDA using HELM
         run: |
           cd test/
@@ -394,7 +394,7 @@ jobs:
       - name: Install Kind Cluster
         uses: engineerd/setup-kind@v0.5.0
         with:
-          version: v0.11.1
+          version: v0.18.0
       - name: Install KEDA using HELM
         run: |
           cd test/
