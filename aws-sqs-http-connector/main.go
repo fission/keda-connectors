@@ -37,7 +37,7 @@ func parseURL(baseURL *url.URL, queueName string) (string, error) {
 func (conn awsSQSConnector) consumeMessage() {
 	var maxNumberOfMessages = int64(10) // Process maximum 10 messages concurrently
 	var waitTimeSeconds = int64(5)      //Wait 5 sec to process another message
-
+	var respQueueURL, errorQueueURL string
 	headers := http.Header{
 		"KEDA-Topic":          {conn.connectordata.Topic},
 		"KEDA-Response-Topic": {conn.connectordata.ResponseTopic},
@@ -50,13 +50,19 @@ func (conn awsSQSConnector) consumeMessage() {
 	if err != nil {
 		conn.logger.Error("failed to parse consumer queue url", zap.Error(err))
 	}
-	respQueueURL, err := parseURL(conn.sqsURL, os.Getenv("RESPONSE_TOPIC"))
-	if err != nil {
-		conn.logger.Error("failed to parse response queue url", zap.Error(err))
+
+	if os.Getenv("RESPONSE_TOPIC") != "" {
+		respQueueURL, err = parseURL(conn.sqsURL, os.Getenv("RESPONSE_TOPIC"))
+		if err != nil {
+			conn.logger.Error("failed to parse response queue url", zap.Error(err))
+		}
 	}
-	errorQueueURL, err := parseURL(conn.sqsURL, os.Getenv("ERROR_TOPIC"))
-	if err != nil {
-		conn.logger.Error("failed to parse error queue url", zap.Error(err))
+
+	if os.Getenv("ERROR_TOPIC") != "" {
+		errorQueueURL, err = parseURL(conn.sqsURL, os.Getenv("ERROR_TOPIC"))
+		if err != nil {
+			conn.logger.Error("failed to parse error queue url", zap.Error(err))
+		}
 	}
 
 	for {
@@ -124,6 +130,8 @@ func (conn awsSQSConnector) responseHandler(queueURL string, response string, me
 			)
 			return false
 		}
+	} else {
+		conn.logger.Debug("response received", zap.String("response", response))
 	}
 	return true
 }
