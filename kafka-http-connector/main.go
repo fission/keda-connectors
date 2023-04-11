@@ -265,7 +265,7 @@ func (conn *kafkaConnector) errorHandler(err error) {
 				zap.Error(e),
 				zap.String("source", conn.connectorData.SourceName),
 				zap.String("message", err.Error()),
-				zap.String("topic", conn.connectorData.Topic))
+				zap.String("topic", conn.connectorData.ErrorTopic))
 		}
 	} else {
 		conn.logger.Error("message received to publish to error topic, but no error topic was set",
@@ -286,7 +286,7 @@ func (conn *kafkaConnector) responseHandler(msg string, headers []sarama.RecordH
 		if err != nil {
 			conn.logger.Warn("failed to publish response body from http request to topic",
 				zap.Error(err),
-				zap.String("topic", conn.connectorData.Topic),
+				zap.String("topic", conn.connectorData.ResponseTopic),
 				zap.String("source", conn.connectorData.SourceName),
 				zap.String("http endpoint", conn.connectorData.HTTPEndpoint))
 			return false
