@@ -1,7 +1,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"net/url"
 	"strings"
@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
+
 	"github.com/fission/keda-connectors/common"
 )
 
@@ -36,7 +37,7 @@ func parseURL(baseURL *url.URL, queueName string) (string, error) {
 func (conn awsSQSConnector) consumeMessage() {
 	var maxNumberOfMessages = int64(10) // Process maximum 10 messages concurrently
 	var waitTimeSeconds = int64(5)      //Wait 5 sec to process another message
-
+	var respQueueURL, errorQueueURL string
 	headers := http.Header{
 		"KEDA-Topic":          {conn.connectordata.Topic},
 		"KEDA-Response-Topic": {conn.connectordata.ResponseTopic},
@@ -49,13 +50,19 @@ func (conn awsSQSConnector) consumeMessage() {
 	if err != nil {
 		conn.logger.Error("failed to parse consumer queue url", zap.Error(err))
 	}
-	respQueueURL, err := parseURL(conn.sqsURL, os.Getenv("RESPONSE_TOPIC"))
-	if err != nil {
-		conn.logger.Error("failed to parse response queue url", zap.Error(err))
+
+	if os.Getenv("RESPONSE_TOPIC") != "" {
+		respQueueURL, err = parseURL(conn.sqsURL, os.Getenv("RESPONSE_TOPIC"))
+		if err != nil {
+			conn.logger.Error("failed to parse response queue url", zap.Error(err))
+		}
 	}
-	errorQueueURL, err := parseURL(conn.sqsURL, os.Getenv("ERROR_TOPIC"))
-	if err != nil {
-		conn.logger.Error("failed to parse error queue url", zap.Error(err))
+
+	if os.Getenv("ERROR_TOPIC") != "" {
+		errorQueueURL, err = parseURL(conn.sqsURL, os.Getenv("ERROR_TOPIC"))
+		if err != nil {
+			conn.logger.Error("failed to parse error queue url", zap.Error(err))
+		}
 	}
 
 	for {
@@ -79,8 +86,7 @@ func (conn awsSQSConnector) consumeMessage() {
 			if err != nil {
 				conn.errorHandler(errorQueueURL, err)
 			} else {
-				defer resp.Body.Close()
-				body, err := ioutil.ReadAll(resp.Body)
+				body, err := io.ReadAll(resp.Body)
 				if err != nil {
 					conn.errorHandler(errorQueueURL, err)
 				} else {
@@ -97,6 +103,10 @@ func (conn awsSQSConnector) consumeMessage() {
 					if success := conn.responseHandler(respQueueURL, string(body), sqsMessageAttValue); success {
 						conn.deleteMessage(*message.ReceiptHandle, consQueueURL)
 					}
+				}
+				err = resp.Body.Close()
+				if err != nil {
+					conn.logger.Error("failed to close response body", zap.Error(err))
 				}
 			}
 		}
@@ -120,6 +130,8 @@ func (conn awsSQSConnector) responseHandler(queueURL string, response string, me
 			)
 			return false
 		}
+	} else {
+		conn.logger.Debug("response received", zap.String("response", response))
 	}
 	return true
 }
@@ -171,7 +183,9 @@ func main() {
 	defer logger.Sync()
 
 	connectordata, err := common.ParseConnectorMetadata()
-
+	if err != nil {
+		logger.Fatal("failed to parse connector metadata", zap.Error(err))
+	}
 	config, err := common.GetAwsConfig()
 	if err != nil {
 		logger.Error("failed to fetch aws config", zap.Error(err))

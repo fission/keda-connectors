@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
+	"unicode/utf8"
 
 	"github.com/Shopify/sarama"
 	"github.com/pkg/errors"
@@ -30,29 +30,27 @@ import (
 
 // https://github.com/kedacore/keda/blob/v1.5.0/pkg/scalers/kafka_scaler.go#L28
 type kafkaMetadata struct {
-	bootstrapServers []string
-	consumerGroup    string
+	bootstrapServers  []string
+	consumerGroup     string
+	offsetResetPolicy string
 
-	// auth
-	authMode kafkaAuthMode
+	// SASL
+	saslType string
 	username string
 	password string
 
-	// ssl
+	// TLS
+	tls  string
 	cert string
 	key  string
 	ca   string
 }
 
-type kafkaAuthMode string
-
 const (
-	kafkaAuthModeNone            kafkaAuthMode = "none"
-	kafkaAuthModeSaslPlaintext   kafkaAuthMode = "sasl_plaintext"
-	kafkaAuthModeSaslScramSha256 kafkaAuthMode = "sasl_scram_sha256"
-	kafkaAuthModeSaslScramSha512 kafkaAuthMode = "sasl_scram_sha512"
-	kafkaAuthModeSaslSSL         kafkaAuthMode = "sasl_ssl"
-	kafkaAuthModeSaslSSLPlain    kafkaAuthMode = "sasl_ssl_plain"
+	kafkaAuthModeNone            string = ""
+	kafkaAuthModeSaslPlaintext   string = "plaintext"
+	kafkaAuthModeSaslScramSha256 string = "scram_sha256"
+	kafkaAuthModeSaslScramSha512 string = "scram_sha512"
 )
 
 // https://github.com/kedacore/keda/blob/v1.5.0/pkg/scalers/kafka_scaler.go#L83
@@ -78,19 +76,31 @@ func parseKafkaMetadata(logger *zap.Logger) (kafkaMetadata, error) {
 	}
 	meta.consumerGroup = os.Getenv("CONSUMER_GROUP")
 
-	meta.authMode = kafkaAuthModeNone
-	mode := kafkaAuthMode(strings.TrimSpace((os.Getenv("AUTH_MODE"))))
-	if mode == "" {
-		mode = kafkaAuthModeNone
+	offsetResetPolicy := os.Getenv("OFFSET_RESET_POLICY")
+
+	// If offsetResetPolicy is not set, use latest by default
+	if offsetResetPolicy == "" {
+		offsetResetPolicy = "latest"
 	}
 
-	if mode != kafkaAuthModeNone && mode != kafkaAuthModeSaslPlaintext && mode != kafkaAuthModeSaslSSL && mode != kafkaAuthModeSaslSSLPlain && mode != kafkaAuthModeSaslScramSha256 && mode != kafkaAuthModeSaslScramSha512 {
-		return meta, fmt.Errorf("err auth mode %s given", mode)
+	// Check offsetResetPolicy is valid
+	if offsetResetPolicy != "earliest" && offsetResetPolicy != "latest" {
+		return meta, errors.Errorf("offsetResetPolicy %s not support. It should be one of earliest or latest", offsetResetPolicy)
+	}
+	meta.offsetResetPolicy = offsetResetPolicy
+
+	meta.tls = os.Getenv("TLS")
+	if meta.tls == "" {
+		meta.tls = "disabled"
 	}
 
-	meta.authMode = mode
+	meta.saslType = os.Getenv("SASL")
 
-	if meta.authMode != kafkaAuthModeNone && meta.authMode != kafkaAuthModeSaslSSL {
+	if meta.saslType != kafkaAuthModeSaslPlaintext && meta.saslType != kafkaAuthModeNone && meta.saslType != kafkaAuthModeSaslScramSha256 && meta.saslType != kafkaAuthModeSaslScramSha512 {
+		return meta, fmt.Errorf("incorrect value for sasl authentication %s given", meta.saslType)
+	}
+
+	if meta.saslType != kafkaAuthModeNone {
 		if os.Getenv("USERNAME") == "" {
 			return meta, errors.New("no username given")
 		}
@@ -102,20 +112,20 @@ func parseKafkaMetadata(logger *zap.Logger) (kafkaMetadata, error) {
 		meta.password = strings.TrimSpace(os.Getenv("PASSWORD"))
 	}
 
-	if meta.authMode == kafkaAuthModeSaslSSL {
-		if os.Getenv("CA") == "" {
-			return meta, errors.New("no ca given")
+	if meta.tls == "enable" {
+		// if either CERT or KEY are provided, both must be provided
+		if os.Getenv("CERT") != "" && os.Getenv("KEY") == "" {
+			return meta, errors.New("cert given but no key, both required")
 		}
+
+		if os.Getenv("KEY") != "" && os.Getenv("CERT") == "" {
+			return meta, errors.New("key given but no cert, both required")
+		}
+
+		// CA is optional
 		meta.ca = os.Getenv("CA")
-
-		if os.Getenv("CERT") == "" {
-			return meta, errors.New("no cert given")
-		}
+		// CERT and KEY must be provided as a pair, but both are optional
 		meta.cert = os.Getenv("CERT")
-
-		if os.Getenv("KEY") == "" {
-			return meta, errors.New("no key given")
-		}
 		meta.key = os.Getenv("KEY")
 	}
 
@@ -126,59 +136,46 @@ func parseKafkaMetadata(logger *zap.Logger) (kafkaMetadata, error) {
 
 func getConfig(metadata kafkaMetadata) (*sarama.Config, error) {
 	config := sarama.NewConfig()
-	config.Version = sarama.V1_0_0_0
+	config.Version = sarama.V2_0_0_0
 
-	if ok := metadata.authMode == kafkaAuthModeSaslPlaintext || metadata.authMode == kafkaAuthModeSaslSSLPlain || metadata.authMode == kafkaAuthModeSaslScramSha256 || metadata.authMode == kafkaAuthModeSaslScramSha512; ok {
+	// When offsetResetPolicy is earliest, set Consumer.Offsets.Initial to OffsetOldest.
+	// Otherwise, set Consumer.Offsets.Initial to OffsetNewest.
+	// Ref: https://github.com/Shopify/sarama/issues/803#issuecomment-269215508
+	if metadata.offsetResetPolicy == "earliest" {
+		config.Consumer.Offsets.Initial = sarama.OffsetOldest
+	} else {
+		config.Consumer.Offsets.Initial = sarama.OffsetNewest
+	}
+
+	if ok := metadata.saslType == kafkaAuthModeSaslPlaintext || metadata.saslType == kafkaAuthModeSaslScramSha256 || metadata.saslType == kafkaAuthModeSaslScramSha512; ok {
 		config.Net.SASL.Enable = true
 		config.Net.SASL.User = metadata.username
 		config.Net.SASL.Password = metadata.password
 	}
 
-	if metadata.authMode == kafkaAuthModeSaslSSLPlain {
+	if metadata.saslType == kafkaAuthModeSaslPlaintext {
 		config.Net.SASL.Mechanism = sarama.SASLMechanism(sarama.SASLTypePlaintext)
-
-		tlsConfig := &tls.Config{
-			InsecureSkipVerify: true,
-			ClientAuth:         0,
-		}
-
-		config.Net.TLS.Enable = true
-		config.Net.TLS.Config = tlsConfig
-		config.Net.DialTimeout = 10 * time.Second
 	}
 
-	if metadata.authMode == kafkaAuthModeSaslSSL {
-		cert, err := tls.X509KeyPair([]byte(metadata.cert), []byte(metadata.key))
-		if err != nil {
-			return nil, fmt.Errorf("error parse X509KeyPair: %s", err)
-		}
-
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM([]byte(metadata.ca))
-
-		tlsConfig := &tls.Config{
-			Certificates: []tls.Certificate{cert},
-			RootCAs:      caCertPool,
-		}
-
-		config.Net.TLS.Enable = true
-		config.Net.TLS.Config = tlsConfig
-	}
-
-	if metadata.authMode == kafkaAuthModeSaslScramSha256 {
+	if metadata.saslType == kafkaAuthModeSaslScramSha256 {
 		config.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &XDGSCRAMClient{HashGeneratorFcn: SHA256} }
 		config.Net.SASL.Mechanism = sarama.SASLMechanism(sarama.SASLTypeSCRAMSHA256)
 	}
 
-	if metadata.authMode == kafkaAuthModeSaslScramSha512 {
+	if metadata.saslType == kafkaAuthModeSaslScramSha512 {
 		config.Net.SASL.SCRAMClientGeneratorFunc = func() sarama.SCRAMClient { return &XDGSCRAMClient{HashGeneratorFcn: SHA512} }
 		config.Net.SASL.Mechanism = sarama.SASLMechanism(sarama.SASLTypeSCRAMSHA512)
 	}
 
-	if metadata.authMode == kafkaAuthModeSaslPlaintext {
-		config.Net.SASL.Mechanism = sarama.SASLTypePlaintext
+	if metadata.tls == "enable" {
 		config.Net.TLS.Enable = true
+		tlsConfig, err := NewTLSConfig(metadata.cert, metadata.key, metadata.ca)
+		if err != nil {
+			return nil, err
+		}
+		config.Net.TLS.Config = tlsConfig
 	}
+
 	return config, nil
 }
 
@@ -255,15 +252,16 @@ func (conn *kafkaConnector) ConsumeClaim(session sarama.ConsumerGroupSession, cl
 
 		// Set the headers came from Kafka record
 		for _, h := range message.Headers {
-			headers.Add(string(h.Key), string(h.Value))
+			if utf8.ValidString(string(h.Value)) {
+				headers.Add(string(h.Key), string(h.Value))
+			}
 		}
 
 		resp, err := common.HandleHTTPRequest(msg, headers, conn.connectorData, conn.logger)
 		if err != nil {
 			conn.errorHandler(resp, err)
 		} else {
-			defer resp.Body.Close()
-			body, err := ioutil.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				conn.errorHandler(nil, err)
 			} else {
@@ -272,6 +270,10 @@ func (conn *kafkaConnector) ConsumeClaim(session sarama.ConsumerGroupSession, cl
 				if success := conn.responseHandler(string(body), kafkaRecordHeaders); success {
 					session.MarkMessage(message, "")
 				}
+			}
+			err = resp.Body.Close()
+			if err != nil {
+				conn.logger.Error(err.Error())
 			}
 		}
 	}
@@ -310,7 +312,7 @@ func (conn *kafkaConnector) errorHandler(resp *http.Response, err error) {
 				zap.Error(e),
 				zap.String("source", conn.connectorData.SourceName),
 				zap.String("message", err.Error()),
-				zap.String("topic", conn.connectorData.Topic))
+				zap.String("topic", conn.connectorData.ErrorTopic))
 		}
 	} else {
 		conn.logger.Error("message received to publish to error topic, but no error topic was set",
@@ -344,7 +346,7 @@ func (conn *kafkaConnector) responseHandler(msg string, headers []sarama.RecordH
 		if err != nil {
 			conn.logger.Warn("failed to publish response body from http request to topic",
 				zap.Error(err),
-				zap.String("topic", conn.connectorData.Topic),
+				zap.String("topic", conn.connectorData.ResponseTopic),
 				zap.String("source", conn.connectorData.SourceName),
 				zap.String("http endpoint", conn.connectorData.HTTPEndpoint))
 			return false
@@ -360,7 +362,7 @@ func getProducer(metadata kafkaMetadata) (sarama.SyncProducer, error) {
 		return nil, err
 	}
 
-	config.Producer.RequiredAcks = sarama.WaitForAll
+	config.Producer.RequiredAcks = sarama.WaitForLocal
 	config.Producer.Retry.Max = 10
 	config.Producer.Return.Successes = true
 	producer, err := sarama.NewSyncProducer(metadata.bootstrapServers, config)
@@ -448,4 +450,37 @@ func main() {
 	if err = client.Close(); err != nil {
 		logger.Error("Error closing client", zap.Error(err))
 	}
+}
+
+// NewTLSConfig returns a *tls.Config using the given ceClient cert, ceClient key,
+// and CA certificate. If none are appropriate, a nil *tls.Config is returned.
+// Ref: https://github.com/kedacore/keda/blob/154364276402783c08fa24e7968fd31b9f89b6a6/pkg/util/tls_config.go
+// TODO: Move this to common package as other connectors might need this
+func NewTLSConfig(clientCert, clientKey, caCert string) (*tls.Config, error) {
+	valid := false
+
+	config := &tls.Config{}
+
+	if clientCert != "" && clientKey != "" {
+		cert, err := tls.X509KeyPair([]byte(clientCert), []byte(clientKey))
+		if err != nil {
+			return nil, fmt.Errorf("error parse X509KeyPair: %s", err)
+		}
+		config.Certificates = []tls.Certificate{cert}
+		valid = true
+	}
+
+	if caCert != "" {
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM([]byte(caCert))
+		config.RootCAs = caCertPool
+		config.InsecureSkipVerify = true
+		valid = true
+	}
+
+	if !valid {
+		config = nil
+	}
+
+	return config, nil
 }

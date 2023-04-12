@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
-        "os"
+	"os"
+
 	"github.com/streadway/amqp"
 )
 
@@ -72,4 +73,3 @@ func submit() {
 		fmt.Println("Publishing a message is  successful!")
 	}
 }
-

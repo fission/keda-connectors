@@ -1,10 +1,11 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/streadway/amqp"
 	"go.uber.org/zap"
@@ -44,7 +45,17 @@ func (conn rabbitMQConnector) consumeMessage() {
 	}
 
 	forever := make(chan bool)
-	sem := make(chan int, 10) // Process maximum 10 messages concurrently
+	concurrent := 0
+	if os.Getenv("CONCURRENT") == "" {
+		concurrent = 10 // Set concurrent to 10 when env not exist
+	} else {
+		concurrent, err = strconv.Atoi(os.Getenv("CONCURRENT")) // The env will be str by default, convert it to int
+		if err != nil {
+			// Whenn error happened, use the default concurrent
+			concurrent = 10
+		}
+	}
+	sem := make(chan int, concurrent) // Process messages concurrently
 
 	go func() {
 		for d := range msgs {
@@ -56,12 +67,15 @@ func (conn rabbitMQConnector) consumeMessage() {
 					conn.errorHandler(err)
 				} else {
 					defer resp.Body.Close()
-					body, err := ioutil.ReadAll(resp.Body)
+					body, err := io.ReadAll(resp.Body)
 					if err != nil {
 						conn.errorHandler(err)
 					} else {
 						if success := conn.responseHandler(string(body)); success {
-							d.Ack(false)
+							err = d.Ack(false)
+							if err != nil {
+								conn.errorHandler(err)
+							}
 						}
 					}
 				}
@@ -133,7 +147,9 @@ func main() {
 	defer logger.Sync()
 
 	connectordata, err := common.ParseConnectorMetadata()
-
+	if err != nil {
+		logger.Fatal("error occurred while parsing connector metadata", zap.Error(err))
+	}
 	host := os.Getenv("HOST")
 	if os.Getenv("INCLUDE_UNACKED") == "true" {
 		logger.Fatal("only amqp protocol host is supported")

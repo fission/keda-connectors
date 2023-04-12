@@ -1,0 +1,20 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: jetstream-scaledobject
+  namespace: default
+  labels:
+    keda: nats-jetstream
+spec:
+  pollingInterval: 30
+  scaleTargetRef:
+    name: keda-nats-jetstream-deployment
+  triggers:
+    - type: nats-jetstream
+      metadata:
+        natsServerMonitoringEndpoint: nats-jetstream.default.svc.cluster.local:8222
+        account: "$G"
+        stream: "input"
+        consumer: "input_consumer"
+        lagThreshold: "100"
+        activationLagThreshold: "15"

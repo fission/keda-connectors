@@ -16,3 +16,4 @@ vendor/
 
 # other
 .DS_Store
+*.env

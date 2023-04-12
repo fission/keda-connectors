@@ -1,15 +1,18 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 
-	"github.com/fission/keda-connectors/common"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan.go"
+	"github.com/rs/xid"
 	"go.uber.org/zap"
+
+	"github.com/fission/keda-connectors/common"
 )
 
 type natsConnector struct {
@@ -29,7 +32,7 @@ func (conn natsConnector) consumeMessage() {
 		"Source-Name":  {conn.connectordata.SourceName},
 	}
 	forever := make(chan bool)
-	_, err := conn.stanConnection.QueueSubscribe(os.Getenv("TOPIC"), os.Getenv("QUEUE_GROUP"), func(m *stan.Msg) {
+	sub, err := conn.stanConnection.QueueSubscribe(os.Getenv("TOPIC"), os.Getenv("QUEUE_GROUP"), func(m *stan.Msg) {
 		msg := string(m.Data)
 		conn.logger.Info(msg)
 		resp, err := common.HandleHTTPRequest(msg, headers, conn.connectordata, conn.logger)
@@ -38,28 +41,59 @@ func (conn natsConnector) consumeMessage() {
 			conn.errorHandler(err)
 		} else {
 			defer resp.Body.Close()
-			body, err := ioutil.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				conn.logger.Info(err.Error())
 				conn.errorHandler(err)
 			} else {
 				if success := conn.responseHandler(body); success {
+					err = m.Ack()
+					if err != nil {
+						conn.logger.Info(err.Error())
+						conn.errorHandler(err)
+					}
 					conn.logger.Info("Done processing message",
 						zap.String("messsage", string(body)))
 				}
 			}
 		}
-	}, stan.DurableName(os.Getenv("DURABLE_NAME")), stan.DeliverAllAvailable())
+	}, stan.DurableName(os.Getenv("DURABLE_NAME")), stan.DeliverAllAvailable(),
+		stan.SetManualAckMode(), stan.MaxInflight(1))
 
 	if err != nil {
 		conn.logger.Fatal("error occurred while consuming message", zap.Error(err))
 	}
 
 	conn.logger.Info("NATs consumer up and running!...")
+
+	// Wait for a SIGINT (perhaps triggered by user with CTRL-C)
+	// Run cleanup when signal is received
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt)
+	go func() {
+		for range signalChan {
+			conn.logger.Info("Received an interrupt, unsubscribing and closing connection...")
+			err = sub.Unsubscribe()
+			if err != nil {
+				conn.logger.Error("error occurred while unsubscribing", zap.Error(err))
+			}
+			err = conn.stanConnection.Close()
+			if err != nil {
+				conn.logger.Error("error occurred while closing connection", zap.Error(err))
+			}
+			forever <- true
+		}
+	}()
 	<-forever
 }
 
 func (conn natsConnector) errorHandler(err error) {
+
+	if len(conn.connectordata.ErrorTopic) == 0 {
+		conn.logger.Warn("Error topic not set")
+		return
+	}
+
 	publishErr := conn.stanConnection.Publish(conn.connectordata.ErrorTopic, []byte(err.Error()))
 
 	if publishErr != nil {
@@ -73,19 +107,20 @@ func (conn natsConnector) errorHandler(err error) {
 
 func (conn natsConnector) responseHandler(response []byte) bool {
 
-	if len(conn.connectordata.ResponseTopic) > 0 {
+	if len(conn.connectordata.ResponseTopic) == 0 {
+		conn.logger.Warn("Response topic not set")
+		return false
+	}
+	publishErr := conn.stanConnection.Publish(conn.connectordata.ResponseTopic, response)
 
-		publishErr := conn.stanConnection.Publish(conn.connectordata.ResponseTopic, response)
-
-		if publishErr != nil {
-			conn.logger.Error("failed to publish response body from http request to topic",
-				zap.Error(publishErr),
-				zap.String("topic", conn.connectordata.ResponseTopic),
-				zap.String("source", conn.connectordata.SourceName),
-				zap.String("http endpoint", conn.connectordata.HTTPEndpoint),
-			)
-			return false
-		}
+	if publishErr != nil {
+		conn.logger.Error("failed to publish response body from http request to topic",
+			zap.Error(publishErr),
+			zap.String("topic", conn.connectordata.ResponseTopic),
+			zap.String("source", conn.connectordata.SourceName),
+			zap.String("http endpoint", conn.connectordata.HTTPEndpoint),
+		)
+		return false
 	}
 	return true
 }
@@ -98,7 +133,9 @@ func main() {
 	defer logger.Sync()
 
 	connectordata, err := common.ParseConnectorMetadata()
-
+	if err != nil {
+		logger.Fatal("error occurred while parsing metadata", zap.Error(err))
+	}
 	host := os.Getenv("NATS_SERVER")
 
 	if host == "" {
@@ -111,7 +148,8 @@ func main() {
 		logger.Fatal("failed to establish connection with NATS", zap.Error(err))
 	}
 
-	sc, err := stan.Connect(os.Getenv("CLUSTER_ID"), os.Getenv("CLIENT_ID"), stan.NatsConn(nc))
+	clientId := xid.New()
+	sc, err := stan.Connect(os.Getenv("CLUSTER_ID"), clientId.String(), stan.NatsConn(nc))
 	if err != nil {
 		log.Fatal(err)
 	}

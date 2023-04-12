@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 
@@ -9,18 +10,19 @@ import (
 )
 
 func main() {
-	nc, err := nats.Connect("nats://localhost:4222")
+	nc, err := nats.Connect("nats://nats:4222")
 	if err != nil {
 		log.Fatal(err)
 	}
-	sc, err := stan.Connect("test-cluster", "stan-sub", stan.NatsConn(nc))
+	sc, err := stan.Connect("my-stan", "stan-sub", stan.NatsConn(nc))
 	if err != nil {
 		log.Fatal(err)
 	}
-	for i := 100; i < 102; i++ {
-		sc.Publish("hello", []byte("Test"+strconv.Itoa(i)))
+	for i := 0; i < 100; i++ {
+		sc.Publish("request-topic", []byte("Test"+strconv.Itoa(i)))
 	}
-
+	fmt.Println("Published all the messages")
+	sc.Close()
 	// sc.QueueSubscribe("response", "grp1", func(m *stan.Msg) {
 	// 	log.Printf("[Received] %+v", m)
 	// }, stan.DurableName("due"), stan.DeliverAllAvailable())

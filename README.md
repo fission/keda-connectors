@@ -8,7 +8,7 @@ The deployment that Keda scales can be a custom program you write to do somethin
 
 # Current Connector List
 
-|Connectot Name | Description |
+|Connector Name | Connector Description |
 |---|---|
 |[AWS SQS HTTP Connector](./aws-sqs-http-connector/README.md)|Reads message from AWS SQS and posts to a HTTP endpoint.|
 |[Kafka HTTP Connector](./kafka-http-connector/README.md)| Consumes messages from Kafka topics and posts the message to an HTTP endpoint.|

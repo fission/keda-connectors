@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: producer-deployment
+  namespace: default
+  labels:
+    app: producer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: producer
+  template:
+    metadata:
+      labels:
+        app: producer
+    spec:
+      containers:
+        - name: consumer
+          image: localhost:5000/jetstream-producer:latest 
+          env:
+            - name: NATS_SERVER
+              value: "nats://nats-jetstream:4222"
+            - name: COUNT
+              value: "3"

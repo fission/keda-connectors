@@ -16,10 +16,10 @@ spec:
         app: http
     spec:
       containers:
-      - name: http-server
-        image: localhost:5000/http-server:latest
-        ports:
-        - containerPort: 8080
+        - name: http-server
+          image: localhost:5000/http-server:latest
+          ports:
+            - containerPort: 8080
 ---
 apiVersion: v1
 kind: Service
@@ -32,4 +32,3 @@ spec:
     - protocol: TCP
       port: 8080
       targetPort: 8080
-

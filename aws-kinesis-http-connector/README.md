@@ -12,19 +12,21 @@ The job of the connector is to read messages from the stream, call an HTTP endpo
 - `MAX_RETRIES`: Maximum number of times an http endpoint will be retried upon failure.
 - `CONTENT_TYPE`: Content type used while creating post request.
 
-#### Ways to connect to AWS
-- `AWS_REGION`: Region is mandatory for any aws connection.
-  
-1) Through AWS endpoint  
-- `AWS_ENDPOINT` : Kinesis endpoint on which it is running, for local it can be http://localhost:4568.  
+## Ways to connect to AWS
 
-2) Through AWS aws key and secret
-- `AWS_ACCESS_KEY_ID`: aws access key of your account.
-- `AWS_SECRET_ACCESS_KEY`: aws secret key got from your account.  
+`AWS_REGION`: Region is mandatory for any aws connection.
 
-3) Through AWS credentials
-- `AWS_CRED_PATH`: Path where aws credentials are present, ex ~/.aws/credentials.
-- `AWS_CRED_PROFILE`: Profile With which to connect to AWS, present in  ~/.aws/credentials file.
+1. Through AWS endpoint
+   - `AWS_ENDPOINT` : Kinesis endpoint on which it is running, for local it can be [http://localhost:4568](http://localhost:4568)
 
+2. Through AWS aws key and secret
+
+   - `AWS_ACCESS_KEY_ID`: aws access key of your account.
+   - `AWS_SECRET_ACCESS_KEY`: aws secret key got from your account.
+
+3. Through AWS credentials
+
+   - `AWS_CRED_PATH`: Path where aws credentials are present, ex ~/.aws/credentials.
+   - `AWS_CRED_PROFILE`: Profile With which to connect to AWS, present in  ~/.aws/credentials file.
 
 More information about the above parameters and how to define it scaledobject refer [AWS SQS scaler doc](https://keda.sh/docs/1.5/scalers/aws-sqs/).
