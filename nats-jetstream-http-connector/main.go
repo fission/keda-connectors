@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"time"
 
 	"golang.org/x/exp/maps"
@@ -26,6 +27,7 @@ type jetstreamConnector struct {
 	consumer        string
 	nc              *nats.Conn
 	ackwait         string
+	concurrentSem   chan int
 }
 
 func main() {
@@ -63,11 +65,29 @@ func main() {
 		consumer:        consumer,
 		nc:              nc,
 		ackwait:         ackwait,
+		concurrentSem:   initialiseConcurrency(),
 	}
+
 	err = conn.consumeMessage()
 	if err != nil {
 		conn.logger.Fatal("error occurred while parsing metadata", zap.Error(err))
 	}
+}
+
+func initialiseConcurrency() chan int {
+	concurrent := os.Getenv("CONCURRENT")
+	concurrency := 1
+	if concurrent != "" {
+		var err error
+		concurrency, err = strconv.Atoi(concurrent)
+		if err != nil {
+			concurrency = 1
+		}
+	}
+	if concurrency < 1 {
+		concurrency = 1
+	}
+	return make(chan int, concurrency)
 }
 
 func (conn jetstreamConnector) getAckwait() (time.Duration, error) {
@@ -92,7 +112,8 @@ func (conn jetstreamConnector) consumeMessage() error {
 
 	// Create durable consumer monitor
 	sub, err := conn.jsContext.Subscribe(conn.connectordata.Topic, func(msg *nats.Msg) {
-		conn.handleHTTPRequest(msg)
+		conn.concurrentSem <- 1
+		go conn.handleHTTPRequest(msg)
 		// Durable is required because if we allow jetstream to create new consumer we
 		// will be reading records from the start from the stream.
 	}, nats.Durable(conn.consumer), nats.ManualAck(), nats.AckWait(ackwait))
@@ -155,7 +176,7 @@ func (conn jetstreamConnector) handleHTTPRequest(msg *nats.Msg) {
 			}
 		}
 	}
-
+	<-conn.concurrentSem
 }
 
 func (conn jetstreamConnector) responseHandler(response []byte) bool {
