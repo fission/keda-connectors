@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"golang.org/x/exp/maps"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
+
+	"golang.org/x/exp/maps"
 
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
