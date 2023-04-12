@@ -184,7 +184,7 @@ func extractControlHeaders(headers []sarama.RecordHeader) ([]byte, bool, []saram
 		key []byte
 	)
 	tombstone := false
-	var cleaned []sarama.RecordHeader
+	cleaned := make([]sarama.RecordHeader, 0, len(headers))
 	for _, header := range headers {
 		if strings.ToLower(string(header.Key)) == "keda-message-key" {
 			key = header.Value
