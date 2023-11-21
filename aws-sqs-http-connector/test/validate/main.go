@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs"
 )
 
-//comment
+// comment
 func main() {
 	queueURL := "http://localstack:31000/queue/"
 	region := "us-east-1"
@@ -26,13 +26,16 @@ func main() {
 	}
 	svc := sqs.New(sess)
 
-	msg := fmt.Sprintf("Hello Msg")
+	msg := "Hello Msg"
 	url := queueURL + "my_queue"
 	_, err = svc.SendMessage(&sqs.SendMessageInput{
 		DelaySeconds: aws.Int64(10),
 		MessageBody:  &msg,
 		QueueUrl:     &url,
 	})
+	if err != nil {
+		log.Fatal("Error while sending message")
+	}
 	time.Sleep(5 * time.Second)
 	urlRep := queueURL + "responseTopic"
 	var maxNumberOfMessages = int64(1)

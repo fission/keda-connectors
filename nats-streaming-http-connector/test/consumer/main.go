@@ -21,6 +21,9 @@ func main() {
 		msg := string(m.Data)
 		fmt.Println(msg)
 	}, stan.DeliverAllAvailable())
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Println("All messages consumed")
 	select {}
 }

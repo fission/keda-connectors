@@ -24,7 +24,11 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error converting results to json",
 			http.StatusInternalServerError)
 	}
-	w.Write(jsonBody)
+	_, err = w.Write(jsonBody)
+	if err != nil {
+		http.Error(w, "Error writing results",
+			http.StatusInternalServerError)
+	}
 }
 
 // PostHandler converts post request body to string

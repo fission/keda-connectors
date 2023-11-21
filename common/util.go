@@ -97,7 +97,7 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 	return resp, nil
 }
 
-//GetAwsConfig get's the configuration required to connect to aws
+// GetAwsConfig get's the configuration required to connect to aws
 func GetAwsConfig() (*aws.Config, error) {
 	if os.Getenv("AWS_REGION") == "" {
 		return nil, errors.New("aws region required")

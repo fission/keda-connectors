@@ -19,7 +19,10 @@ func main() {
 		log.Fatal(err)
 	}
 	for i := 0; i < 100; i++ {
-		sc.Publish("request-topic", []byte("Test"+strconv.Itoa(i)))
+		err := sc.Publish("request-topic", []byte("Test"+strconv.Itoa(i)))
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 	fmt.Println("Published all the messages")
 	sc.Close()
