@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 )
 
 func main() {
