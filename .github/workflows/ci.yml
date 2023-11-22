@@ -56,7 +56,7 @@ jobs:
           kubectl create -f kafka-http-connector/test/kubernetes/kafka-cluster.yaml
           echo "Kafka Cluster is getting up."
           kubectl wait -f kafka-http-connector/test/kubernetes/kafka-cluster.yaml --for=condition=ready --timeout=-1s -n kafka
-          sleep 2m
+          sleep 10s
           kubectl get pods -n kafka
           kubectl wait pod -l app.kubernetes.io/name=zookeeper --for=condition=ready --timeout=-1s -n kafka
 
