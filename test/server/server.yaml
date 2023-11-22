@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: http-server
-          image: localhost:5000/http-server:latest
+          image: ko://github.com/fission/keda-connectors/test/server
           ports:
             - containerPort: 8080
 ---
