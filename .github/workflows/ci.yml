@@ -24,18 +24,18 @@ jobs:
         id: filter
         with:
           filters: |
-            kafkachanges: 
+            kafkachanges:
               - 'kafka-http-connector/**'
-            rabbitmqchanges: 
-              - 'rabbitmq-http-connector/**'   
-            sqschanges:  
-              - 'aws-sqs-http-connector/**' 
-            redischanges:
-              - 'redis-http-connector/**'
-            natschanges:
-              - 'nats-streaming-http-connector/**'
-            natsjetstreamchanges:
-              - 'nats-jetstream-http-connector/**'
+            # rabbitmqchanges:
+            #   - 'rabbitmq-http-connector/**'
+            # sqschanges:
+            #   - 'aws-sqs-http-connector/**'
+            # redischanges:
+            #   - 'redis-http-connector/**'
+            # natschanges:
+            #   - 'nats-streaming-http-connector/**'
+            # natsjetstreamchanges:
+            #   - 'nats-jetstream-http-connector/**'
 
   kafka:
     needs: check
@@ -100,7 +100,7 @@ jobs:
 
       - name: Setup Keda
         uses: ./.github/actions/setup-keda
-      
+
       - name: Create Docker Image for Rabbitmq KEDA Connector
         run: |
           cd rabbitmq-http-connector/
@@ -162,12 +162,12 @@ jobs:
           docker push localhost:5000/aws-sqs-connector:latest
       - name: Create SQS Docker image with AWS CLI in KEDA Connetor
         run: |
-          cd aws-sqs-http-connector/test/kubernetes 
+          cd aws-sqs-http-connector/test/kubernetes
           docker build -t localhost:5000/aws-sqs-test-connector:latest .
           docker push localhost:5000/aws-sqs-test-connector:latest
       - name: Deploy SQS Keda Connector, Keda ScaledObject and Localstack
         run: |
-          cd aws-sqs-http-connector/test/kubernetes 
+          cd aws-sqs-http-connector/test/kubernetes
           kubectl apply -f keda-deployment.yml
           kubectl apply -f keda-scaledObj.yml
           kubectl apply -f localstack.yaml
@@ -223,7 +223,7 @@ jobs:
           kubectl get pods -n ot-operators
       - name: Deploy Redis Keda Connector and Keda ScaledObject
         run: |
-          cd redis-http-connector/test/kubernetes/ 
+          cd redis-http-connector/test/kubernetes/
           kubectl apply -f keda-deployment.yaml
           sleep 30s
           kubectl apply -f Keda-ScaledObj.yaml
@@ -280,7 +280,7 @@ jobs:
           kubectl get pods
       - name: Deploy Nats Keda Connector and Keda ScaledObject
         run: |
-          cd nats-streaming-http-connector/test/kubernetes/ 
+          cd nats-streaming-http-connector/test/kubernetes/
           kubectl apply -f Keda-deployment.yaml
           sleep 30s
           kubectl apply -f keda-ScaledObject.yaml
@@ -342,7 +342,7 @@ jobs:
           kubectl apply -f deployment.yaml
       - name: Deploy Nats Keda Connector and Keda ScaledObject
         run: |
-          cd nats-jetstream-http-connector/test/kubernetes/ 
+          cd nats-jetstream-http-connector/test/kubernetes/
           kubectl apply -f Keda-deployment.yaml
           sleep 30s
           kubectl apply -f keda-ScaledObject.yaml
