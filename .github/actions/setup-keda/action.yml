@@ -2,12 +2,6 @@ name: Keda Setup
 
 description: Setup Kind and Keda
 
-env:
-  HELM_VERSION: v3.13.0
-  KIND_VERSION: v0.20.0
-  KIND_CLUSTER_NAME: kind
-  KEDA_VERSION: 2.12.0
-
 runs:
   using: "composite"
   steps:
@@ -15,20 +9,20 @@ runs:
       uses: helm/kind-action@dda0770415bac9fc20092cacbc54aa298604d140 # v1.8.0
       with:
         node_image: kindest/node:v1.23.17
-        version: ${{ env.KIND_VERSION }}
-        cluster_name: ${{ env.KIND_CLUSTER_NAME }}
+        version: v0.20.0
+        cluster_name: kind
 
     - name: Helm installation
       uses: Azure/setup-helm@5119fcb9089d432beecbf79bb2c7915207344b78 # v3.5
       with:
-        version: ${{ env.HELM_VERSION }}
+        version: v3.13.0
 
     - name: Install Keda
       shell: bash
       run: |
         helm repo add kedacore https://kedacore.github.io/charts
         helm repo update
-        helm install keda kedacore/keda --namespace keda --version ${{ env.KEDA_VERSION }}
+        helm install keda kedacore/keda --namespace keda --version 2.12.0
 
     - name: Setup Ko
       uses: ko-build/setup-ko@ace48d793556083a76f1e3e6068850c1f4a369aa # v0.6
