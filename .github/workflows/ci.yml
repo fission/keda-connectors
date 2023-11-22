@@ -50,23 +50,21 @@ jobs:
 
       - name: Deploy Kafka Cluster
         run: |
-          cd kafka-http-connector/test/kubernetes/
           kubectl create namespace kafka
           curl -L http://strimzi.io/install/latest | sed 's/namespace: .*/namespace: kafka/' | kubectl create -f - -n kafka
           sleep 10s
           kubectl create -f kafka-http-connector/test/kubernetes/kafka-cluster.yaml
           echo "Kafka Cluster is getting up."
-          kubectl wait -f kafka-cluster.yaml --for=condition=ready --timeout=-1s -n kafka
+          kubectl wait -f kafka-http-connector/test/kubernetes/kafka-cluster.yaml --for=condition=ready --timeout=-1s -n kafka
           sleep 2m
           kubectl get pods -n kafka
           kubectl wait pod -l app.kubernetes.io/name=zookeeper --for=condition=ready --timeout=-1s -n kafka
 
       - name: Create Kafka topics
         run: |
-          cd kafka-http-connector/test/kubernetes/
-          kubectl apply -f kafka-req-topic.yaml
-          kubectl apply -f kafka-err-topic.yaml
-          kubectl apply -f kafka-res-topic.yaml
+          kubectl apply -f kafka-http-connector/test/kubernetes/kafka-req-topic.yaml
+          kubectl apply -f kafka-http-connector/test/kubernetes/kafka-err-topic.yaml
+          kubectl apply -f kafka-http-connector/test/kubernetes/kafka-res-topic.yaml
 
       - name: Deploy Kafka Keda Connector and Keda ScaledObject
         run: |
