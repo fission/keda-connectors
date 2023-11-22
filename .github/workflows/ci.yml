@@ -64,7 +64,7 @@ jobs:
 
       - name: Deploy Kafka Keda Connector and Keda ScaledObject
         run: |
-          ko resolve -f kafka-http-connector/test/kubernetes/keda-deployment.yml | kubectl apply -f - -n kafka
+          ko apply -f kafka-http-connector/test/kubernetes/keda-deployment.yml -n kafka
           kubectl get pods -n kafka
           sleep 15s
           kubectl get pods -n kafka
@@ -73,14 +73,14 @@ jobs:
 
       - name: Produce Kafka messages Using Producer
         run: |
-          ko resolve -f kafka-http-connector/test/kubernetes/kafka-produer.yaml | kubectl apply -f - -n kafka
+          ko apply -f kafka-http-connector/test/kubernetes/kafka-produer.yaml
           kubectl wait job -l app=pi --for=condition=complete --timeout=-1s -n kafka
           kubectl delete job pi -n kafka
 
       - name: Collect Kafka Consumer Messages
         run: |
           kubectl get pods -n kafka
-          ko resolve -f kafka-http-connector/test/consumer/consumer-deployment.yaml | kubectl apply -f - -n kafka
+          ko apply -f kafka-http-connector/test/consumer/consumer-deployment.yaml
           kubectl wait pod -l app=consumer --for=condition=ready --timeout=-1s -n kafka
           kubectl logs -l app=consumer --all-containers=true -n kafka
 
@@ -126,17 +126,17 @@ jobs:
         run: |
           cd rabbitmq-http-connector/test/publisher/
           kubectl apply -f deployment.yaml
-          ko resolve -f publisher-job.yaml | kubectl apply -f - -n rabbits
+          ko apply -f publisher-job.yaml -n rabbits
 
       - name: Bring up the Rabbitmq consumer queue and Listen for incoming messages
         run: |
           cd rabbitmq-http-connector/test/consumer/
-          ko resolve -f consumer-deployment.yaml | kubectl apply -f -
+          ko apply -f consumer-deployment.yaml
 
       - name: Deploy Rabbitmq Keda Connector and Keda ScaledObject
         run: |
           cd rabbitmq-http-connector/test/kubernetes/
-          ko resolve -f keda-deployment.yml | kubectl apply -f - -n rabbits
+          ko apply -f keda-deployment.yml
           kubectl wait pod -l keda=rabbitmq --for=condition=ready --timeout=-1s -n rabbits
           kubectl apply -f Keda-ScaledObj.yml
 
@@ -166,12 +166,14 @@ jobs:
           cd aws-sqs-http-connector/test/kubernetes
           docker build -t localhost:5000/aws-sqs-test-connector:latest .
           docker push localhost:5000/aws-sqs-test-connector:latest
+
       - name: Deploy SQS Keda Connector, Keda ScaledObject and Localstack
         run: |
           cd aws-sqs-http-connector/test/kubernetes
           kubectl apply -f keda-deployment.yml
           kubectl apply -f keda-scaledObj.yml
           kubectl apply -f localstack.yaml
+
       - name: Build and Deploy SQS test queue
         run: |
           cd aws-sqs-http-connector/test/validate
@@ -181,6 +183,7 @@ jobs:
           sleep 10s
           kubectl get pods
           kubectl wait pod -l app=queue --for=condition=ready --timeout=200s
+
       - name: Get SQS consumed messages from queue
         run: |
           sleep 30s
@@ -212,6 +215,7 @@ jobs:
           cd redis-http-connector/test/consumer/
           docker build -t localhost:5000/redis-consumer:latest .
           docker push localhost:5000/redis-consumer:latest
+
       - name: Deploy Redis cluster
         run: |
           helm repo add ot-helm https://ot-container-kit.github.io/helm-charts/
@@ -223,6 +227,7 @@ jobs:
           helm upgrade redis ot-helm/redis -f redis-values.yaml --install --namespace ot-operators
           sleep 50s
           kubectl get pods -n ot-operators
+
       - name: Deploy Redis Keda Connector and Keda ScaledObject
         run: |
           cd redis-http-connector/test/kubernetes/
@@ -230,15 +235,18 @@ jobs:
           sleep 30s
           kubectl apply -f Keda-ScaledObj.yaml
           sleep 30s
+
       - name: Publish Redis messages in a queue
         run: |
           cd redis-http-connector/test/publisher/
           kubectl apply -f publisher-deployment.yaml
           sleep 30s
+
       - name: Bring up the Redis consumer queue and Listen for incoming messages
         run: |
           cd redis-http-connector/test/consumer/
           kubectl apply -f consumer-deployment.yaml
+
       - name: Get Redis consumed messages from queue
         run: |
           sleep 30s
