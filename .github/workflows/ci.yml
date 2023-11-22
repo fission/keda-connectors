@@ -42,6 +42,9 @@ jobs:
     if: contains(needs.check.outputs.packages, 'kafkachanges')
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
       - name: Setup Keda
         uses: ./.github/actions/setup-keda
 
@@ -92,6 +95,9 @@ jobs:
     if: contains(needs.check.outputs.packages, 'rabbitmqchanges')
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
       - name: Setup Keda
         uses: ./.github/actions/setup-keda
       
@@ -143,6 +149,9 @@ jobs:
     if: contains(needs.check.outputs.packages, 'sqschanges')
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
       - name: Setup Keda
         uses: ./.github/actions/setup-keda
 
@@ -180,6 +189,9 @@ jobs:
     if: contains(needs.check.outputs.packages, 'redischanges')
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
       - name: Setup Keda
         uses: ./.github/actions/setup-keda
 
@@ -236,6 +248,9 @@ jobs:
     if: contains(needs.check.outputs.packages, 'natschanges')
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
       - name: Setup Keda
         uses: ./.github/actions/setup-keda
 
@@ -291,6 +306,9 @@ jobs:
     if: contains(needs.check.outputs.packages, 'natsjetstreamchanges')
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
       - name: Setup Keda
         uses: ./.github/actions/setup-keda
 
