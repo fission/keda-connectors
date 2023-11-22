@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: keda-rabbit-connector
-        image: localhost:5000/rabbit-keda:latest
+        image: ko://github.com/fission/keda-connectors/rabbitmq-http-connector
         env:
           - name: TOPIC
             value: publisher

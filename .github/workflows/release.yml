@@ -6,11 +6,6 @@ on:
       - main
     paths:
       - "**/version"
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "**/version"
 
 jobs:
   check:

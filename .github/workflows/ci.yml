@@ -6,10 +6,6 @@ on:
   pull_request:
     branches:
       - main
-env:
-  KIND_URL: https://kind.sigs.k8s.io/dl
-  KIND_VER: v0.8.1
-  KIND_ENV: kind-linux-amd64
 
 jobs:
   check:
@@ -26,16 +22,16 @@ jobs:
           filters: |
             kafkachanges:
               - 'kafka-http-connector/**'
-            # rabbitmqchanges:
-            #   - 'rabbitmq-http-connector/**'
-            # sqschanges:
-            #   - 'aws-sqs-http-connector/**'
-            # redischanges:
-            #   - 'redis-http-connector/**'
-            # natschanges:
-            #   - 'nats-streaming-http-connector/**'
-            # natsjetstreamchanges:
-            #   - 'nats-jetstream-http-connector/**'
+            rabbitmqchanges:
+              - 'rabbitmq-http-connector/**'
+            sqschanges:
+              - 'aws-sqs-http-connector/**'
+            redischanges:
+              - 'redis-http-connector/**'
+            natschanges:
+              - 'nats-streaming-http-connector/**'
+            natsjetstreamchanges:
+              - 'nats-jetstream-http-connector/**'
 
   kafka:
     needs: check
@@ -99,21 +95,6 @@ jobs:
       - name: Setup Keda
         uses: ./.github/actions/setup-keda
 
-      - name: Create Docker Image for Rabbitmq KEDA Connector
-        run: |
-          cd rabbitmq-http-connector/
-          docker build -t localhost:5000/rabbit-keda:latest .
-          docker push localhost:5000/rabbit-keda:latest
-      - name: Create Rabbitmq Docker Image for Publisher
-        run: |
-          cd rabbitmq-http-connector/test/publisher/
-          docker build -t localhost:5000/rabbit-publisher:latest .
-          docker push localhost:5000/rabbit-publisher:latest
-      - name: Create Rabbitmq Docker Image for Consumer
-        run: |
-          cd rabbitmq-http-connector/test/consumer/
-          docker build -t localhost:5000/rabbit-consumer:latest .
-          docker push localhost:5000/rabbit-consumer:latest
       - name: Deploy Rabbitmq Deployment files
         run: |
           cd rabbitmq-http-connector/test/kubernetes/
@@ -123,25 +104,47 @@ jobs:
           kubectl apply -n rabbits -f rabbit-secret.yaml
           kubectl apply -n rabbits -f rabbit-statefulset.yaml
           bash rabbitmq-cluster-instances.sh
+
+      # - name: Create Docker Image for Rabbitmq KEDA Connector
+      #   run: |
+      #     cd rabbitmq-http-connector/
+      #     docker build -t localhost:5000/rabbit-keda:latest .
+      #     docker push localhost:5000/rabbit-keda:latest
+      # - name: Create Rabbitmq Docker Image for Publisher
+      #   run: |
+      #     cd rabbitmq-http-connector/test/publisher/
+      #     docker build -t localhost:5000/rabbit-publisher:latest .
+      #     docker push localhost:5000/rabbit-publisher:latest
+
+      # - name: Create Rabbitmq Docker Image for Consumer
+      #   run: |
+      #     cd rabbitmq-http-connector/test/consumer/
+      #     docker build -t localhost:5000/rabbit-consumer:latest .
+      #     docker push localhost:5000/rabbit-consumer:latest
+
       - name: Publish Rabbitmq messages in a queue
         run: |
           cd rabbitmq-http-connector/test/publisher/
           kubectl apply -f deployment.yaml
-          kubectl apply -f publisher-job.yaml
+          ko resolve -f publisher-job.yaml | kubectl apply -f - -n rabbits
+
       - name: Bring up the Rabbitmq consumer queue and Listen for incoming messages
         run: |
           cd rabbitmq-http-connector/test/consumer/
-          kubectl apply -f consumer-deployment.yaml
+          ko resolve -f consumer-deployment.yaml | kubectl apply -f -
+
       - name: Deploy Rabbitmq Keda Connector and Keda ScaledObject
         run: |
           cd rabbitmq-http-connector/test/kubernetes/
-          kubectl apply -f keda-deployment.yml
+          ko resolve -f keda-deployment.yml | kubectl apply -f - -n rabbits
           kubectl wait pod -l keda=rabbitmq --for=condition=ready --timeout=-1s -n rabbits
           kubectl apply -f Keda-ScaledObj.yml
+
       - name: Get Rabbitmq consumed messages from queue
         run: |
           sleep 10s
           kubectl logs  -n rabbits deployment.apps/rabbitmq-consumer
+
   sqs:
     needs: check
     if: contains(needs.check.outputs.packages, 'sqschanges')
@@ -182,6 +185,7 @@ jobs:
         run: |
           sleep 30s
           kubectl logs -l app=queue
+
   redis:
     needs: check
     if: contains(needs.check.outputs.packages, 'redischanges')
@@ -241,6 +245,7 @@ jobs:
           kubectl logs deployment.apps/consumer-deployment
           kubectl logs deployment.apps/consumer-deployment | grep -q "consumed"
           echo $?
+
   nats:
     needs: check
     if: contains(needs.check.outputs.packages, 'natschanges')
