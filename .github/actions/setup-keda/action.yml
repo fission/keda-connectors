@@ -24,6 +24,7 @@ runs:
         version: ${{ env.HELM_VERSION }}
 
     - name: Install Keda
+      shell: bash
       run: |
         helm repo add kedacore https://kedacore.github.io/charts
         helm repo update
@@ -35,6 +36,7 @@ runs:
         KO_DOCKER_REPO: kind.local
 
     - name: Run local http server
+      shell: bash
       run: |
         ko resolve -f test/server/server.yaml | kubectl apply -f -
         kubectl wait pod -l app=http --for=condition=ready --timeout=-1s
