@@ -78,7 +78,7 @@ jobs:
       - name: Produce Kafka messages Using Producer
         run: |
           ko resolve -f kafka-http-connector/test/kubernetes/kafka-produer.yaml | kubectl apply -f - -n kafka
-          kubectl wait -l app=pi --for=condition=complete --timeout=-1s -n kafka
+          kubectl wait job -l app=pi --for=condition=complete --timeout=-1s -n kafka
           kubectl delete job pi -n kafka
 
       - name: Collect Kafka Consumer Messages
