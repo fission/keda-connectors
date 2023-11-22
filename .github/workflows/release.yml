@@ -61,4 +61,4 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          KO_DOCKER_REPO=ghcr.io/fission/keda-${{ matrix.run }} ko publish --platform=linux/amd64,linux/arm64,linux/arm/v7 -t ${{ env.version }} --bare
+          KO_DOCKER_REPO=ghcr.io/fission/keda-${{ matrix.run }} ko publish --platform=linux/amd64,linux/arm64,linux/arm/v7 -t ${{ env.version }} ./${{ matrix.run }} --bare
