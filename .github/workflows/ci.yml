@@ -64,7 +64,7 @@ jobs:
 
       - name: Deploy Kafka Keda Connector and Keda ScaledObject
         run: |
-          ko apply -f kafka-http-connector/test/kubernetes/keda-deployment.yml -n kafka
+          ko apply -f kafka-http-connector/test/kubernetes/keda-deployment.yml
           kubectl get pods -n kafka
           sleep 15s
           kubectl get pods -n kafka
@@ -126,7 +126,7 @@ jobs:
         run: |
           cd rabbitmq-http-connector/test/publisher/
           kubectl apply -f deployment.yaml
-          ko apply -f publisher-job.yaml -n rabbits
+          ko apply -f publisher-job.yaml
 
       - name: Bring up the Rabbitmq consumer queue and Listen for incoming messages
         run: |
