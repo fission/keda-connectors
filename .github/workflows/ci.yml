@@ -105,23 +105,6 @@ jobs:
           kubectl apply -n rabbits -f rabbit-statefulset.yaml
           bash rabbitmq-cluster-instances.sh
 
-      # - name: Create Docker Image for Rabbitmq KEDA Connector
-      #   run: |
-      #     cd rabbitmq-http-connector/
-      #     docker build -t localhost:5000/rabbit-keda:latest .
-      #     docker push localhost:5000/rabbit-keda:latest
-      # - name: Create Rabbitmq Docker Image for Publisher
-      #   run: |
-      #     cd rabbitmq-http-connector/test/publisher/
-      #     docker build -t localhost:5000/rabbit-publisher:latest .
-      #     docker push localhost:5000/rabbit-publisher:latest
-
-      # - name: Create Rabbitmq Docker Image for Consumer
-      #   run: |
-      #     cd rabbitmq-http-connector/test/consumer/
-      #     docker build -t localhost:5000/rabbit-consumer:latest .
-      #     docker push localhost:5000/rabbit-consumer:latest
-
       - name: Publish Rabbitmq messages in a queue
         run: |
           cd rabbitmq-http-connector/test/publisher/
