@@ -5,7 +5,6 @@ linters:
     - govet
     - ineffassign
     - staticcheck
-    # - structcheck
     - typecheck
     - unused
     # Additional linters
@@ -18,7 +17,6 @@ linters:
     - dogsled
     - dupl
     # - gosec
-    # - ifshort
     - nilerr
     - prealloc
     # - revive
