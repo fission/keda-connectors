@@ -4,6 +4,7 @@ metadata:
   name: pi
   labels:
     app: pi
+  namespace: kafka
 spec:
   completions: 1
   ttlSecondsAfterFinished: 10
