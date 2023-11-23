@@ -17,4 +17,4 @@ spec:
     spec:
       containers:
         - name: producer
-          image: localhost:5000/nats-producer:latest
+          image: ko://github.com/fission/keda-connectors/nats-streaming-http-connector/test/producer

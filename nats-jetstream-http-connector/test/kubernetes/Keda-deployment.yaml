@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: keda-nats-streaming-connector
-          image: localhost:5000/jetstream-connector:latest  
+          image: ko://github.com/fission/keda-connectors/nats-jetstream-http-connector 
           env:
             - name: TOPIC
               value: input.created

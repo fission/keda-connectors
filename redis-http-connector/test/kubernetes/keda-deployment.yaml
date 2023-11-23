@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: keda-redis-connector
-          image: localhost:5000/redis-connector:latest
+          image: ko://github.com/fission/keda-connectors/redis-http-connector
           env:
             - name: TOPIC
               value: request-topic

@@ -17,4 +17,4 @@ spec:
     spec:
       containers:
         - name: publisher
-          image: localhost:5000/redis-publisher:latest
+          image: ko://github.com/fission/keda-connectors/redis-http-connector/test/publisher

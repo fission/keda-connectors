@@ -139,30 +139,17 @@ jobs:
       - name: Setup Keda
         uses: ./.github/actions/setup-keda
 
-      - name: Create Docker Image for SQS KEDA Connector
-        run: |
-          cd aws-sqs-http-connector
-          docker build -t localhost:5000/aws-sqs-connector:latest .
-          docker push localhost:5000/aws-sqs-connector:latest
-      - name: Create SQS Docker image with AWS CLI in KEDA Connetor
-        run: |
-          cd aws-sqs-http-connector/test/kubernetes
-          docker build -t localhost:5000/aws-sqs-test-connector:latest .
-          docker push localhost:5000/aws-sqs-test-connector:latest
-
       - name: Deploy SQS Keda Connector, Keda ScaledObject and Localstack
         run: |
           cd aws-sqs-http-connector/test/kubernetes
-          kubectl apply -f keda-deployment.yml
+          ko apply -f keda-deployment.yml
           kubectl apply -f keda-scaledObj.yml
           kubectl apply -f localstack.yaml
 
       - name: Build and Deploy SQS test queue
         run: |
           cd aws-sqs-http-connector/test/validate
-          docker build -t localhost:5000/test-queue:latest .
-          docker push localhost:5000/test-queue:latest
-          kubectl apply -f test.yaml
+          ko apply -f test.yaml
           sleep 10s
           kubectl get pods
           kubectl wait pod -l app=queue --for=condition=ready --timeout=200s
@@ -183,22 +170,6 @@ jobs:
       - name: Setup Keda
         uses: ./.github/actions/setup-keda
 
-      - name: Create Docker Image for Redis KEDA Connector
-        run: |
-          cd redis-http-connector/
-          docker build -t localhost:5000/redis-connector:latest .
-          docker push localhost:5000/redis-connector:latest
-      - name: Create Redis Docker Image for Publisher
-        run: |
-          cd redis-http-connector/test/publisher/
-          docker build -t localhost:5000/redis-publisher:latest .
-          docker push localhost:5000/redis-publisher:latest
-      - name: Create Redis Docker Image for Consumer
-        run: |
-          cd redis-http-connector/test/consumer/
-          docker build -t localhost:5000/redis-consumer:latest .
-          docker push localhost:5000/redis-consumer:latest
-
       - name: Deploy Redis cluster
         run: |
           helm repo add ot-helm https://ot-container-kit.github.io/helm-charts/
@@ -214,7 +185,7 @@ jobs:
       - name: Deploy Redis Keda Connector and Keda ScaledObject
         run: |
           cd redis-http-connector/test/kubernetes/
-          kubectl apply -f keda-deployment.yaml
+          ko apply -f keda-deployment.yaml
           sleep 30s
           kubectl apply -f Keda-ScaledObj.yaml
           sleep 30s
@@ -222,13 +193,13 @@ jobs:
       - name: Publish Redis messages in a queue
         run: |
           cd redis-http-connector/test/publisher/
-          kubectl apply -f publisher-deployment.yaml
+          ko apply -f publisher-deployment.yaml
           sleep 30s
 
       - name: Bring up the Redis consumer queue and Listen for incoming messages
         run: |
           cd redis-http-connector/test/consumer/
-          kubectl apply -f consumer-deployment.yaml
+          ko apply -f consumer-deployment.yaml
 
       - name: Get Redis consumed messages from queue
         run: |
@@ -248,21 +219,6 @@ jobs:
       - name: Setup Keda
         uses: ./.github/actions/setup-keda
 
-      - name: Create Docker Image for Nats KEDA Connector
-        run: |
-          cd nats-streaming-http-connector/
-          docker build -t localhost:5000/nats-connector:latest .
-          docker push localhost:5000/nats-connector:latest
-      - name: Create Nats Docker Image for Publisher
-        run: |
-          cd nats-streaming-http-connector/test/producer/
-          docker build -t localhost:5000/nats-producer:latest .
-          docker push localhost:5000/nats-producer:latest
-      - name: Create Nats Docker Image for Consumer
-        run: |
-          cd nats-streaming-http-connector/test/consumer/
-          docker build -t localhost:5000/nats-consumer:latest .
-          docker push localhost:5000/nats-consumer:latest
       - name: Deploy Nats streaming cluster
         run: |
           helm repo add nats https://nats-io.github.io/k8s/helm/charts/
@@ -272,22 +228,24 @@ jobs:
           helm install my-stan nats/stan --set stan.nats.url=nats://nats:4222
           sleep 30s
           kubectl get pods
+
       - name: Deploy Nats Keda Connector and Keda ScaledObject
         run: |
           cd nats-streaming-http-connector/test/kubernetes/
-          kubectl apply -f Keda-deployment.yaml
+          ko apply -f Keda-deployment.yaml
           sleep 30s
           kubectl apply -f keda-ScaledObject.yaml
           sleep 30s
+
       - name: Publish Nats messages in a queue
         run: |
           cd nats-streaming-http-connector/test/producer/
-          kubectl apply -f deployment.yaml
+          ko apply -f deployment.yaml
           sleep 30s
       - name: Bring up the Nats consumer queue and Listen for incoming messages
         run: |
           cd nats-streaming-http-connector/test/consumer/
-          kubectl apply -f deployment.yaml
+          ko apply -f deployment.yaml
       - name: Get Nats consumed messages from queue
         run: |
           sleep 30s
@@ -306,41 +264,30 @@ jobs:
       - name: Setup Keda
         uses: ./.github/actions/setup-keda
 
-      - name: Create Docker Image for Jetstream Nats KEDA Connector
-        run: |
-          cd nats-jetstream-http-connector/
-          docker build -t localhost:5000/jetstream-connector:latest .
-          docker push localhost:5000/jetstream-connector:latest
-      - name: Create Nats Docker Image for Publisher
-        run: |
-          cd nats-jetstream-http-connector/test/producer/
-          docker build -t localhost:5000/jetstream-producer:latest .
-          docker push localhost:5000/jetstream-producer:latest
-      - name: Create Nats Docker Image for Consumer
-        run: |
-          cd nats-jetstream-http-connector/test/consumer/
-          docker build -t localhost:5000/jetstream-consumer:latest .
-          docker push localhost:5000/jetstream-consumer:latest
       - name: Deploy Jetstream Nats cluster
         run: |
           cd nats-jetstream-http-connector/test/jetstream
           kubectl apply -f jetstream-server.yaml
+
       - name: Publish Nats messages in a stream
         run: |
           cd nats-jetstream-http-connector/test/producer/
-          kubectl apply -f deployment.yaml
+          ko apply -f deployment.yaml
           sleep 30s
+
       - name: Bring up the Nats consumer stream and Listen for incoming messages
         run: |
           cd nats-jetstream-http-connector/test/consumer/
-          kubectl apply -f deployment.yaml
+          ko apply -f deployment.yaml
+
       - name: Deploy Nats Keda Connector and Keda ScaledObject
         run: |
           cd nats-jetstream-http-connector/test/kubernetes/
-          kubectl apply -f Keda-deployment.yaml
+          ko apply -f Keda-deployment.yaml
           sleep 30s
           kubectl apply -f keda-ScaledObject.yaml
           sleep 30s
+
       - name: Get Nats consumed messages from stream
         run: |
           # sleep 90s

@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: consumer
-          image: localhost:5000/jetstream-consumer:latest 
+          image: ko://github.com/fission/keda-connectors/nats-jetstream-http-connector/test/consumer
           env:
             - name: NATS_SERVER
               value: "nats://nats-jetstream:4222"

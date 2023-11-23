@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: keda-sqs-connector
-          image: localhost:5000/aws-sqs-test-connector:latest
+          image: ko://github.com/fission/keda-connectors/aws-sqs-http-connector
           env:
             - name: TOPIC
               value: my_queue

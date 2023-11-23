@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: test-message
-        image: localhost:5000/test-queue:latest
+        image: ko://github.com/fission/keda-connectors/aws-sqs-http-connector/test/validate
       initContainers:
       - name: create-queue
         image: amazon/aws-cli
