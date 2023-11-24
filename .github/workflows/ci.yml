@@ -139,18 +139,23 @@ jobs:
       - name: Setup Keda
         uses: ./.github/actions/setup-keda
 
-      - name: Deploy SQS Keda Connector, Keda ScaledObject and Localstack
+      - name: Deploy Localstack with helm
+        run: |
+          helm repo add localstack-charts https://localstack.github.io/helm-charts
+          helm repo update
+          helm install localstack localstack-charts/localstack
+
+      - name: Deploy SQS Keda Connector, Keda ScaledObject and SQS test queue
         run: |
           cd aws-sqs-http-connector/test/kubernetes
+          kubectl apply -f aws-secret.yaml
           ko apply -f keda-deployment.yml
           kubectl apply -f keda-scaledObj.yml
-          kubectl apply -f localstack.yaml
+          ko apply -f test.yaml
+          sleep 10s
 
       - name: Build and Deploy SQS test queue
         run: |
-          cd aws-sqs-http-connector/test/validate
-          ko apply -f test.yaml
-          sleep 10s
           kubectl get pods
           kubectl wait pod -l app=queue --for=condition=ready --timeout=200s
 

@@ -39,5 +39,5 @@ runs:
     - name: Run local http server
       shell: bash
       run: |
-        ko resolve -f test/server/server.yaml | kubectl apply -f -
+        ko apply -f test/server/server.yaml
         kubectl wait pod -l app=http --for=condition=ready --timeout=-1s

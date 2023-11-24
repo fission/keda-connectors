@@ -65,6 +65,8 @@ func (conn awsSQSConnector) consumeMessage() {
 		}
 	}
 
+	conn.logger.Info("starting to consume messages from queue", zap.String("queue", consQueueURL), zap.String("response queue", respQueueURL), zap.String("error queue", errorQueueURL))
+
 	for {
 		output, err := conn.sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
 			QueueUrl:            &consQueueURL,
