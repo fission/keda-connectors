@@ -36,7 +36,7 @@ type awsKinesisConnector struct {
 
 // listShards get called every 30sec to get all the shards
 func (conn *awsKinesisConnector) listShards() ([]*kinesis.Shard, error) {
-	//call DescribeStream to get updated shards
+	// call DescribeStream to get updated shards
 	stream, err := conn.client.DescribeStream(&kinesis.DescribeStreamInput{
 		StreamName: &conn.connectordata.Topic,
 	})
@@ -56,14 +56,14 @@ func (conn *awsKinesisConnector) findNewShards() {
 			ticker.Stop()
 			return
 		case <-ticker.C:
-			//check if new shards are available in every 30 seconds
+			// check if new shards are available in every 30 seconds
 			shardList, err := conn.listShards()
 			if err != nil {
 				return
 			}
 
 			for _, s := range shardList {
-				//send only new shards
+				// send only new shards
 				_, loaded := shards.LoadOrStore(*s.ShardId, s)
 				if !loaded {
 					conn.shardc <- s
@@ -81,7 +81,7 @@ func (conn *awsKinesisConnector) getIterator(shardID string, checkpoint string) 
 	}
 
 	if checkpoint != "" {
-		//Start from, where we left
+		// Start from, where we left
 		params.StartingSequenceNumber = aws.String(checkpoint)
 		params.ShardIteratorType = aws.String(kinesis.ShardIteratorTypeAfterSequenceNumber)
 		iteratorOutput, err := conn.client.GetShardIteratorWithContext(conn.ctx, params)
@@ -90,7 +90,7 @@ func (conn *awsKinesisConnector) getIterator(shardID string, checkpoint string) 
 		}
 		return iteratorOutput, err
 	}
-	//Start from, oldest record in the shard
+	// Start from, oldest record in the shard
 	params.ShardIteratorType = aws.String(kinesis.ShardIteratorTypeTrimHorizon)
 	iteratorOutput, err := conn.client.GetShardIteratorWithContext(conn.ctx, params)
 	if err != nil {
@@ -114,27 +114,27 @@ func (conn *awsKinesisConnector) getRecords(shardIterator *string) (*kinesis.Get
 
 // Check if shards are closed, shards can be updated by using update-shard-count method
 func isShardClosed(nextShardIterator, currentShardIterator *string) bool {
-	//No new iterator is present, means it is closed
+	// No new iterator is present, means it is closed
 	return nextShardIterator == nil || currentShardIterator == nextShardIterator
 }
 
 // scan each shards for any new records, when found call the passed func
 func (conn *awsKinesisConnector) pullRecords(fn pullFunc) {
-	//checkpoints to identify how much read has happened
+	// checkpoints to identify how much read has happened
 	var checkpoints sync.Map
 	var wg sync.WaitGroup
-	//get called when any new shards are added
+	// get called when any new shards are added
 	for s := range conn.shardc {
-		//Start fresh
+		// Start fresh
 		checkpoints.Store(*s.ShardId, "")
 		wg.Add(1)
 		go func(shardID string) {
 			defer wg.Done()
-			//scan every 10 second
+			// scan every 10 second
 			scanTicker := time.NewTicker(10 * time.Second)
 			defer scanTicker.Stop()
 			for {
-				//do noting if shard got deleted
+				// do noting if shard got deleted
 				checkpoint, found := checkpoints.Load(shardID)
 				if !found {
 					conn.logger.Info("shard not found", zap.String("shardID", shardID))
@@ -158,7 +158,7 @@ func (conn *awsKinesisConnector) pullRecords(fn pullFunc) {
 					}
 
 					for _, r := range resp.Records {
-						//send records
+						// send records
 						err := fn(&record{r, shardID, resp.MillisBehindLatest})
 						checkpoints.Store(shardID, *r.SequenceNumber)
 						if err != nil {
@@ -168,7 +168,7 @@ func (conn *awsKinesisConnector) pullRecords(fn pullFunc) {
 						}
 					}
 					if isShardClosed(resp.NextShardIterator, iterator) {
-						//when shards got deleted, remove it from checkpoints
+						// when shards got deleted, remove it from checkpoints
 						if _, found := checkpoints.Load(shardID); found {
 							checkpoints.Delete(shardID)
 							return
@@ -315,10 +315,10 @@ func main() {
 		connectordata: connectordata,
 		logger:        logger,
 		shardc:        shardc,
-		maxRecords:    10, //Read maximum 10 records
+		maxRecords:    10, // Read maximum 10 records
 	}
 	logger.Info("Starting aws kinesis connector")
-	//Get the shards in shardc chan
+	// Get the shards in shardc chan
 	go func() {
 		conn.findNewShards()
 		cancel()

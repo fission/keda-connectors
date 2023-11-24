@@ -75,13 +75,11 @@ func consumerMessage(logger *zap.Logger, js nats.JetStreamContext, stream, topic
 			ctx.Done()
 			err = sub.Unsubscribe()
 			if err != nil {
-				logger.Error("error in unsubscribing: ",
-					zap.Error(err),
-				)
+				logger.Error("error in unsubscribing: ", zap.Error(err))
 			}
 			err = js.DeleteConsumer(stream, consumer)
 			if err != nil {
-				fmt.Errorf("error occurred while closing connection %v", err.Error())
+				logger.Error("error in deleting consumer: ", zap.Error(err))
 			}
 			return
 		default:
@@ -89,8 +87,10 @@ func consumerMessage(logger *zap.Logger, js nats.JetStreamContext, stream, topic
 		msgs, _ := sub.Fetch(batchCount, nats.Context(ctx))
 		for _, msg := range msgs {
 			fmt.Println("consumed message: ", string(msg.Data))
-			msg.Ack()
-
+			err := msg.Ack()
+			if err != nil {
+				logger.Error("error in ack: ", zap.Error(err))
+			}
 		}
 	}
 

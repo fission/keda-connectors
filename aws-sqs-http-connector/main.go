@@ -36,7 +36,7 @@ func parseURL(baseURL *url.URL, queueName string) (string, error) {
 
 func (conn awsSQSConnector) consumeMessage() {
 	var maxNumberOfMessages = int64(10) // Process maximum 10 messages concurrently
-	var waitTimeSeconds = int64(5)      //Wait 5 sec to process another message
+	var waitTimeSeconds = int64(5)      // Wait 5 sec to process another message
 	var respQueueURL, errorQueueURL string
 	headers := http.Header{
 		"KEDA-Topic":          {conn.connectordata.Topic},
@@ -65,6 +65,8 @@ func (conn awsSQSConnector) consumeMessage() {
 		}
 	}
 
+	conn.logger.Info("starting to consume messages from queue", zap.String("queue", consQueueURL), zap.String("response queue", respQueueURL), zap.String("error queue", errorQueueURL))
+
 	for {
 		output, err := conn.sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
 			QueueUrl:            &consQueueURL,
@@ -90,7 +92,7 @@ func (conn awsSQSConnector) consumeMessage() {
 				if err != nil {
 					conn.errorHandler(errorQueueURL, err)
 				} else {
-					//Generating SQS Message attribute
+					// Generating SQS Message attribute
 					var sqsMessageAttValue = make(map[string]*sqs.MessageAttributeValue)
 					for k, v := range resp.Header {
 						for _, d := range v {

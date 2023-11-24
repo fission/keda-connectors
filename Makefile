@@ -1,4 +1,0 @@
-
-lint:
-	./hack/lint.sh
-

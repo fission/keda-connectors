@@ -6,10 +6,6 @@ on:
   pull_request:
     branches:
       - main
-env:
-  KIND_URL: https://kind.sigs.k8s.io/dl
-  KIND_VER: v0.8.1
-  KIND_ENV: kind-linux-amd64
 
 jobs:
   check:
@@ -17,18 +13,19 @@ jobs:
     outputs:
       packages: ${{ steps.filter.outputs.changes }}
     steps:
-      - name: Checkout the current repo
-        uses: actions/checkout@v3
-      - uses: dorny/paths-filter@v2
+      - name: Check out code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - uses: dorny/paths-filter@4512585405083f25c027a35db413c2b3b9006d50 # v2.11.1
         id: filter
         with:
           filters: |
-            kafkachanges: 
+            kafkachanges:
               - 'kafka-http-connector/**'
-            rabbitmqchanges: 
-              - 'rabbitmq-http-connector/**'   
-            sqschanges:  
-              - 'aws-sqs-http-connector/**' 
+            rabbitmqchanges:
+              - 'rabbitmq-http-connector/**'
+            sqschanges:
+              - 'aws-sqs-http-connector/**'
             redischanges:
               - 'redis-http-connector/**'
             natschanges:
@@ -41,119 +38,63 @@ jobs:
     if: contains(needs.check.outputs.packages, 'kafkachanges')
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout the current repo
-        uses: actions/checkout@v3
-      - name: Install Kind Cluster
-        uses: engineerd/setup-kind@v0.5.0
-        with:
-          version: v0.18.0
-      - name: Install KEDA using HELM
+      - name: Check out code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup Keda
+        uses: ./.github/actions/setup-keda
+
+      - name: Deploy Kafka Cluster
         run: |
-          cd test/
-          ./registry.sh
-          helm repo add kedacore https://kedacore.github.io/charts
-          helm repo update
-          kubectl create namespace keda
-          helm install keda kedacore/keda --namespace keda
-      - name: Create Docker Image for HTTP server
-        run: |
-          cd test/server/
-          docker build -t localhost:5000/http-server:latest .
-          docker push localhost:5000/http-server:latest
-          kubectl apply -f server.yaml
-          kubectl wait pod -l app=http --for=condition=ready --timeout=-1s
-      - name: Create Docker Image for Kafka KEDA Connector
-        run: |
-          cd kafka-http-connector/
-          docker build -t localhost:5000/kafka-connector:latest .
-          docker push localhost:5000/kafka-connector:latest
-      - name: Create Kafka Docker Image for Consumer
-        run: |
-          cd kafka-http-connector/test/consumer/
-          docker build -t localhost:5000/consumer:latest .
-          docker push localhost:5000/consumer:latest
-      - name: Deploy Kafka cluster
-        run: |
-          cd kafka-http-connector/test/kubernetes/
           kubectl create namespace kafka
           curl -L http://strimzi.io/install/latest | sed 's/namespace: .*/namespace: kafka/' | kubectl create -f - -n kafka
           sleep 10s
-          kubectl create -f kafka-cluster.yaml
+          kubectl create -f kafka-http-connector/test/kubernetes/kafka-cluster.yaml
           echo "Kafka Cluster is getting up."
-          kubectl wait -f kafka-cluster.yaml --for=condition=ready --timeout=-1s -n kafka
-          sleep 2m
+          kubectl wait -f kafka-http-connector/test/kubernetes/kafka-cluster.yaml --for=condition=ready --timeout=-1s -n kafka
+          sleep 10s
           kubectl get pods -n kafka
           kubectl wait pod -l app.kubernetes.io/name=zookeeper --for=condition=ready --timeout=-1s -n kafka
+
       - name: Create Kafka topics
         run: |
-          cd kafka-http-connector/test/kubernetes/
-          kubectl apply -f kafka-req-topic.yaml
-          kubectl apply -f kafka-err-topic.yaml
-          kubectl apply -f kafka-res-topic.yaml
+          kubectl apply -f kafka-http-connector/test/kubernetes/kafka-req-topic.yaml
+          kubectl apply -f kafka-http-connector/test/kubernetes/kafka-err-topic.yaml
+          kubectl apply -f kafka-http-connector/test/kubernetes/kafka-res-topic.yaml
+
       - name: Deploy Kafka Keda Connector and Keda ScaledObject
         run: |
-          cd kafka-http-connector/test/kubernetes/ 
-          kubectl apply -f keda-deployment.yml
+          ko apply -f kafka-http-connector/test/kubernetes/keda-deployment.yml
           kubectl get pods -n kafka
-          docker images
           sleep 15s
           kubectl get pods -n kafka
           kubectl wait pod -l keda=kafka --for=condition=ready --timeout=30s -n kafka
-          kubectl apply -f Keda-ScaledObj.yml
+          kubectl apply -f kafka-http-connector/test/kubernetes/Keda-ScaledObj.yml -n kafka
+
       - name: Produce Kafka messages Using Producer
         run: |
-          cd kafka-http-connector/test/kubernetes/
-          kubectl apply -f kafka-produer.yaml -n kafka
-          kubectl wait -f kafka-produer.yaml --for=condition=complete --timeout=-1s -n kafka
+          ko apply -f kafka-http-connector/test/kubernetes/kafka-produer.yaml
+          kubectl wait job -l app=pi --for=condition=complete --timeout=-1s -n kafka
           kubectl delete job pi -n kafka
+
       - name: Collect Kafka Consumer Messages
         run: |
           kubectl get pods -n kafka
-          cd kafka-http-connector/test/consumer/
-          kubectl apply -f consumer-deployment.yaml
+          ko apply -f kafka-http-connector/test/consumer/consumer-deployment.yaml
           kubectl wait pod -l app=consumer --for=condition=ready --timeout=-1s -n kafka
           kubectl logs -l app=consumer --all-containers=true -n kafka
+
   rabbitmq:
     needs: check
     if: contains(needs.check.outputs.packages, 'rabbitmqchanges')
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout the current repo
-        uses: actions/checkout@v3
-      - name: Install Kind Cluster
-        uses: engineerd/setup-kind@v0.5.0
-        with:
-          version: v0.18.0
-      - name: Install KEDA using HELM
-        run: |
-          cd test/
-          ./registry.sh
-          helm repo add kedacore https://kedacore.github.io/charts
-          helm repo update
-          kubectl create namespace keda
-          helm install keda kedacore/keda --namespace keda
-      - name: Create Docker Image for HTTP server
-        run: |
-          cd test/server/
-          docker build -t localhost:5000/http-server:latest .
-          docker push localhost:5000/http-server:latest
-          kubectl apply -f server.yaml
-          kubectl wait pod -l app=http --for=condition=ready --timeout=-1s
-      - name: Create Docker Image for Rabbitmq KEDA Connector
-        run: |
-          cd rabbitmq-http-connector/
-          docker build -t localhost:5000/rabbit-keda:latest .
-          docker push localhost:5000/rabbit-keda:latest
-      - name: Create Rabbitmq Docker Image for Publisher
-        run: |
-          cd rabbitmq-http-connector/test/publisher/
-          docker build -t localhost:5000/rabbit-publisher:latest .
-          docker push localhost:5000/rabbit-publisher:latest
-      - name: Create Rabbitmq Docker Image for Consumer
-        run: |
-          cd rabbitmq-http-connector/test/consumer/
-          docker build -t localhost:5000/rabbit-consumer:latest .
-          docker push localhost:5000/rabbit-consumer:latest
+      - name: Check out code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup Keda
+        uses: ./.github/actions/setup-keda
+
       - name: Deploy Rabbitmq Deployment files
         run: |
           cd rabbitmq-http-connector/test/kubernetes/
@@ -163,121 +104,77 @@ jobs:
           kubectl apply -n rabbits -f rabbit-secret.yaml
           kubectl apply -n rabbits -f rabbit-statefulset.yaml
           bash rabbitmq-cluster-instances.sh
+
       - name: Publish Rabbitmq messages in a queue
         run: |
           cd rabbitmq-http-connector/test/publisher/
           kubectl apply -f deployment.yaml
-          kubectl apply -f publisher-job.yaml
+          ko apply -f publisher-job.yaml
+
       - name: Bring up the Rabbitmq consumer queue and Listen for incoming messages
         run: |
           cd rabbitmq-http-connector/test/consumer/
-          kubectl apply -f consumer-deployment.yaml
+          ko apply -f consumer-deployment.yaml
+
       - name: Deploy Rabbitmq Keda Connector and Keda ScaledObject
         run: |
           cd rabbitmq-http-connector/test/kubernetes/
-          kubectl apply -f keda-deployment.yml
+          ko apply -f keda-deployment.yml
           kubectl wait pod -l keda=rabbitmq --for=condition=ready --timeout=-1s -n rabbits
           kubectl apply -f Keda-ScaledObj.yml
+
       - name: Get Rabbitmq consumed messages from queue
         run: |
           sleep 10s
           kubectl logs  -n rabbits deployment.apps/rabbitmq-consumer
+
   sqs:
     needs: check
     if: contains(needs.check.outputs.packages, 'sqschanges')
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout the current repo
-        uses: actions/checkout@v3
-      - name: Install Kind Cluster
-        uses: engineerd/setup-kind@v0.5.0
-        with:
-          version: v0.18.0
-      - name: Install KEDA using HELM
+      - name: Check out code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup Keda
+        uses: ./.github/actions/setup-keda
+
+      - name: Deploy Localstack with helm
         run: |
-          cd test/
-          ./registry.sh
-          helm repo add kedacore https://kedacore.github.io/charts
+          helm repo add localstack-charts https://localstack.github.io/helm-charts
           helm repo update
-          kubectl create namespace keda
-          helm install keda kedacore/keda --namespace keda
-      - name: Create Docker Image for HTTP server
+          helm install localstack localstack-charts/localstack
+
+      - name: Deploy SQS Keda Connector, Keda ScaledObject and SQS test queue
         run: |
-          cd test/server/
-          docker build -t localhost:5000/http-server:latest .
-          docker push localhost:5000/http-server:latest
-          kubectl apply -f server.yaml
-          kubectl wait pod -l app=http --for=condition=ready --timeout=-1s
-      - name: Create Docker Image for SQS KEDA Connector
-        run: |
-          cd aws-sqs-http-connector
-          docker build -t localhost:5000/aws-sqs-connector:latest .
-          docker push localhost:5000/aws-sqs-connector:latest
-      - name: Create SQS Docker image with AWS CLI in KEDA Connetor
-        run: |
-          cd aws-sqs-http-connector/test/kubernetes 
-          docker build -t localhost:5000/aws-sqs-test-connector:latest .
-          docker push localhost:5000/aws-sqs-test-connector:latest
-      - name: Deploy SQS Keda Connector, Keda ScaledObject and Localstack
-        run: |
-          cd aws-sqs-http-connector/test/kubernetes 
-          kubectl apply -f keda-deployment.yml
+          cd aws-sqs-http-connector/test/kubernetes
+          kubectl apply -f aws-secret.yaml
+          ko apply -f keda-deployment.yml
           kubectl apply -f keda-scaledObj.yml
-          kubectl apply -f localstack.yaml
+          ko apply -f test.yaml
+          sleep 10s
+
       - name: Build and Deploy SQS test queue
         run: |
-          cd aws-sqs-http-connector/test/validate
-          docker build -t localhost:5000/test-queue:latest .
-          docker push localhost:5000/test-queue:latest
-          kubectl apply -f test.yaml
-          sleep 10s
           kubectl get pods
           kubectl wait pod -l app=queue --for=condition=ready --timeout=200s
+
       - name: Get SQS consumed messages from queue
         run: |
           sleep 30s
           kubectl logs -l app=queue
+
   redis:
     needs: check
     if: contains(needs.check.outputs.packages, 'redischanges')
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout the current repo
-        uses: actions/checkout@v3
-      - name: Install Kind Cluster
-        uses: engineerd/setup-kind@v0.5.0
-        with:
-          version: v0.18.0
-      - name: Install KEDA using HELM
-        run: |
-          cd test/
-          ./registry.sh
-          helm repo add kedacore https://kedacore.github.io/charts
-          helm repo update
-          kubectl create namespace keda
-          helm install keda kedacore/keda --namespace keda
-      - name: Create Docker Image for HTTP server
-        run: |
-          cd test/server/
-          docker build -t localhost:5000/http-server:latest .
-          docker push localhost:5000/http-server:latest
-          kubectl apply -f server.yaml
-          kubectl wait pod -l app=http --for=condition=ready --timeout=-1s
-      - name: Create Docker Image for Redis KEDA Connector
-        run: |
-          cd redis-http-connector/
-          docker build -t localhost:5000/redis-connector:latest .
-          docker push localhost:5000/redis-connector:latest
-      - name: Create Redis Docker Image for Publisher
-        run: |
-          cd redis-http-connector/test/publisher/
-          docker build -t localhost:5000/redis-publisher:latest .
-          docker push localhost:5000/redis-publisher:latest
-      - name: Create Redis Docker Image for Consumer
-        run: |
-          cd redis-http-connector/test/consumer/
-          docker build -t localhost:5000/redis-consumer:latest .
-          docker push localhost:5000/redis-consumer:latest
+      - name: Check out code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup Keda
+        uses: ./.github/actions/setup-keda
+
       - name: Deploy Redis cluster
         run: |
           helm repo add ot-helm https://ot-container-kit.github.io/helm-charts/
@@ -289,69 +186,44 @@ jobs:
           helm upgrade redis ot-helm/redis -f redis-values.yaml --install --namespace ot-operators
           sleep 50s
           kubectl get pods -n ot-operators
+
       - name: Deploy Redis Keda Connector and Keda ScaledObject
         run: |
-          cd redis-http-connector/test/kubernetes/ 
-          kubectl apply -f keda-deployment.yaml
+          cd redis-http-connector/test/kubernetes/
+          ko apply -f keda-deployment.yaml
           sleep 30s
           kubectl apply -f Keda-ScaledObj.yaml
           sleep 30s
+
       - name: Publish Redis messages in a queue
         run: |
           cd redis-http-connector/test/publisher/
-          kubectl apply -f publisher-deployment.yaml
+          ko apply -f publisher-deployment.yaml
           sleep 30s
+
       - name: Bring up the Redis consumer queue and Listen for incoming messages
         run: |
           cd redis-http-connector/test/consumer/
-          kubectl apply -f consumer-deployment.yaml
+          ko apply -f consumer-deployment.yaml
+
       - name: Get Redis consumed messages from queue
         run: |
           sleep 30s
           kubectl logs deployment.apps/consumer-deployment
           kubectl logs deployment.apps/consumer-deployment | grep -q "consumed"
           echo $?
+
   nats:
     needs: check
     if: contains(needs.check.outputs.packages, 'natschanges')
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout the current repo
-        uses: actions/checkout@v3
-      - name: Install Kind Cluster
-        uses: engineerd/setup-kind@v0.5.0
-        with:
-          version: v0.18.0
-      - name: Install KEDA using HELM
-        run: |
-          cd test/
-          ./registry.sh
-          helm repo add kedacore https://kedacore.github.io/charts
-          helm repo update
-          kubectl create namespace keda
-          helm install keda kedacore/keda --namespace keda
-      - name: Create Docker Image for HTTP server
-        run: |
-          cd test/server/
-          docker build -t localhost:5000/http-server:latest .
-          docker push localhost:5000/http-server:latest
-          kubectl apply -f server.yaml
-          kubectl wait pod -l app=http --for=condition=ready --timeout=-1s
-      - name: Create Docker Image for Nats KEDA Connector
-        run: |
-          cd nats-streaming-http-connector/
-          docker build -t localhost:5000/nats-connector:latest .
-          docker push localhost:5000/nats-connector:latest
-      - name: Create Nats Docker Image for Publisher
-        run: |
-          cd nats-streaming-http-connector/test/producer/
-          docker build -t localhost:5000/nats-producer:latest .
-          docker push localhost:5000/nats-producer:latest
-      - name: Create Nats Docker Image for Consumer
-        run: |
-          cd nats-streaming-http-connector/test/consumer/
-          docker build -t localhost:5000/nats-consumer:latest .
-          docker push localhost:5000/nats-consumer:latest
+      - name: Check out code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup Keda
+        uses: ./.github/actions/setup-keda
+
       - name: Deploy Nats streaming cluster
         run: |
           helm repo add nats https://nats-io.github.io/k8s/helm/charts/
@@ -361,22 +233,24 @@ jobs:
           helm install my-stan nats/stan --set stan.nats.url=nats://nats:4222
           sleep 30s
           kubectl get pods
+
       - name: Deploy Nats Keda Connector and Keda ScaledObject
         run: |
-          cd nats-streaming-http-connector/test/kubernetes/ 
-          kubectl apply -f Keda-deployment.yaml
+          cd nats-streaming-http-connector/test/kubernetes/
+          ko apply -f Keda-deployment.yaml
           sleep 30s
           kubectl apply -f keda-ScaledObject.yaml
           sleep 30s
+
       - name: Publish Nats messages in a queue
         run: |
           cd nats-streaming-http-connector/test/producer/
-          kubectl apply -f deployment.yaml
+          ko apply -f deployment.yaml
           sleep 30s
       - name: Bring up the Nats consumer queue and Listen for incoming messages
         run: |
           cd nats-streaming-http-connector/test/consumer/
-          kubectl apply -f deployment.yaml
+          ko apply -f deployment.yaml
       - name: Get Nats consumed messages from queue
         run: |
           sleep 30s
@@ -389,62 +263,36 @@ jobs:
     if: contains(needs.check.outputs.packages, 'natsjetstreamchanges')
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout the current repo
-        uses: actions/checkout@v3
-      - name: Install Kind Cluster
-        uses: engineerd/setup-kind@v0.5.0
-        with:
-          version: v0.18.0
-      - name: Install KEDA using HELM
-        run: |
-          cd test/
-          ./registry.sh
-          helm repo add kedacore https://kedacore.github.io/charts
-          helm repo update
-          kubectl create namespace keda
-          helm install keda kedacore/keda --namespace keda
-      - name: Create Docker Image for HTTP server
-        run: |
-          cd test/server/
-          docker build -t localhost:5000/http-server:latest .
-          docker push localhost:5000/http-server:latest
-          kubectl apply -f server.yaml
-          kubectl wait pod -l app=http --for=condition=ready --timeout=-1s
-      - name: Create Docker Image for Jetstream Nats KEDA Connector
-        run: |
-          cd nats-jetstream-http-connector/
-          docker build -t localhost:5000/jetstream-connector:latest .
-          docker push localhost:5000/jetstream-connector:latest
-      - name: Create Nats Docker Image for Publisher
-        run: |
-          cd nats-jetstream-http-connector/test/producer/
-          docker build -t localhost:5000/jetstream-producer:latest .
-          docker push localhost:5000/jetstream-producer:latest
-      - name: Create Nats Docker Image for Consumer
-        run: |
-          cd nats-jetstream-http-connector/test/consumer/
-          docker build -t localhost:5000/jetstream-consumer:latest .
-          docker push localhost:5000/jetstream-consumer:latest
+      - name: Check out code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup Keda
+        uses: ./.github/actions/setup-keda
+
       - name: Deploy Jetstream Nats cluster
         run: |
           cd nats-jetstream-http-connector/test/jetstream
-          kubectl apply -f jetstream-server.yaml 
+          kubectl apply -f jetstream-server.yaml
+
       - name: Publish Nats messages in a stream
         run: |
           cd nats-jetstream-http-connector/test/producer/
-          kubectl apply -f deployment.yaml
+          ko apply -f deployment.yaml
           sleep 30s
+
       - name: Bring up the Nats consumer stream and Listen for incoming messages
         run: |
           cd nats-jetstream-http-connector/test/consumer/
-          kubectl apply -f deployment.yaml
+          ko apply -f deployment.yaml
+
       - name: Deploy Nats Keda Connector and Keda ScaledObject
         run: |
-          cd nats-jetstream-http-connector/test/kubernetes/ 
-          kubectl apply -f Keda-deployment.yaml
+          cd nats-jetstream-http-connector/test/kubernetes/
+          ko apply -f Keda-deployment.yaml
           sleep 30s
           kubectl apply -f keda-ScaledObject.yaml
           sleep 30s
+
       - name: Get Nats consumed messages from stream
         run: |
           # sleep 90s

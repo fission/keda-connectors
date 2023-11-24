@@ -1,0 +1,43 @@
+name: Keda Setup
+
+description: Setup Kind and Keda
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
+      with:
+        go-version-file: "go.mod"
+        cache: true
+
+    - name: Setup Kind cluster
+      uses: helm/kind-action@dda0770415bac9fc20092cacbc54aa298604d140 # v1.8.0
+      with:
+        node_image: kindest/node:v1.23.17
+        version: v0.20.0
+        cluster_name: kind
+
+    - name: Helm installation
+      uses: Azure/setup-helm@5119fcb9089d432beecbf79bb2c7915207344b78 # v3.5
+      with:
+        version: v3.13.0
+
+    - name: Install Keda
+      shell: bash
+      run: |
+        kubectl create namespace keda
+        helm repo add kedacore https://kedacore.github.io/charts
+        helm repo update
+        helm install keda kedacore/keda --namespace keda --version 2.12.0
+
+    - name: Setup Ko
+      uses: ko-build/setup-ko@ace48d793556083a76f1e3e6068850c1f4a369aa # v0.6
+      env:
+        KO_DOCKER_REPO: kind.local
+
+    - name: Run local http server
+      shell: bash
+      run: |
+        ko apply -f test/server/server.yaml
+        kubectl wait pod -l app=http --for=condition=ready --timeout=-1s

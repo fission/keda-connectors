@@ -4,13 +4,12 @@ import (
 	"context"
 	"io"
 	"log"
+	"maps"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
 	"time"
-
-	"golang.org/x/exp/maps"
 
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"

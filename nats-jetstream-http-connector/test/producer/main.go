@@ -51,12 +51,10 @@ func main() {
 
 // publishdata publishes data to input stream
 func publishdata(logger *zap.Logger, js nats.JetStreamContext) error {
-
 	no, err := strconv.Atoi(os.Getenv("COUNT"))
 	if err != nil {
 		logger.Error("invalid count provided. Err: ", zap.Error(err))
 		no = 3
-		err = nil
 	}
 	for i := 1; i <= no; i++ {
 		_, err := js.Publish(subjectName, []byte("Test"+strconv.Itoa(i)))

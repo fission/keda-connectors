@@ -10,8 +10,7 @@ spec:
     name: keda-deployment
   pollingInterval: 30
   triggers:
-  - type: rabbitmq
-    metadata:
-      host: amqp://guest:guest@rabbitmq-0.rabbitmq.rabbits.svc.cluster.local:5672/vhost
-      queueName: publisher
-
+    - type: rabbitmq
+      metadata:
+        host: amqp://guest:guest@rabbitmq-0.rabbitmq.rabbits.svc.cluster.local:5672/vhost
+        queueName: publisher

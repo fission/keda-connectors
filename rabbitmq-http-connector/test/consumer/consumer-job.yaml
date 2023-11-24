@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
       - name: rabbit-consumer
-        image: localhost:5000/rabbit-consumer:latest
+        image: ko://github.com/fission/keda-connectors/rabbitmq-http-connector/test/consumer
         ports:
         - containerPort: 80
         env:

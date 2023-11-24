@@ -16,5 +16,5 @@ spec:
         app: consumer
     spec:
       containers:
-      - name: consumer
-        image: localhost:5000/consumer:latest
+        - name: consumer
+          image: ko://github.com/fission/keda-connectors/kafka-http-connector/test/consumer

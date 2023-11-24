@@ -1,19 +1,22 @@
 name: Release
+
 on:
   push:
     branches:
       - main
     paths:
       - "**/version"
+
 jobs:
   check:
     runs-on: ubuntu-latest
     outputs:
       packages: ${{ steps.filter.outputs.changes }}
     steps:
-      - name: Checkout the current repo
-        uses: actions/checkout@v3
-      - uses: dorny/paths-filter@v2
+      - name: Check out code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - uses: dorny/paths-filter@4512585405083f25c027a35db413c2b3b9006d50 # v2.11.1
         id: filter
         with:
           filters: |
@@ -33,6 +36,7 @@ jobs:
               - 'gcp-pubsub-http-connector/version'
             redis-http-connector:
               - 'redis-http-connector/version'
+
   run-docker-build-push-action:
     needs: check
     strategy:
@@ -41,17 +45,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Set up Go
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
       - name: get version
         run: cd ${{ matrix.run }}; version=$(cat version);echo "version=$version" >> $GITHUB_ENV
-      - name: Login to DockerHub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and Push the docker image
-        uses: docker/build-push-action@v3
-        with:
-          context: ${{ matrix.run }}
-          tags: fission/keda-${{ matrix.run }}:latest,fission/keda-${{ matrix.run }}:${{env.version}}
-          push: true
+
+      - name: Setup Ko
+        uses: ko-build/setup-ko@ace48d793556083a76f1e3e6068850c1f4a369aa # v0.6
+
+      - name: Build
+        shell: bash
+        run: |
+          KO_DOCKER_REPO=ghcr.io/fission/keda-${{ matrix.run }} ko publish --platform=linux/amd64,linux/arm64,linux/arm/v7 -t ${{ env.version }} ./${{ matrix.run }} --bare

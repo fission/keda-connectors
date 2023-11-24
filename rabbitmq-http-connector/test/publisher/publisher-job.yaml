@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
       - name: rabbit-publish
-        image: localhost:5000/rabbit-publisher:latest
+        image: ko://github.com/fission/keda-connectors/rabbitmq-http-connector/test/publisher/
         ports:
         - containerPort: 8000
         env:
@@ -29,4 +29,3 @@ spec:
               name: rabbitmq-publisher
               key: RABBIT_PASSWORD
       restartPolicy: Never
-

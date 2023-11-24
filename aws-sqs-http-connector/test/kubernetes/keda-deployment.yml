@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: keda-sqs-connector
-          image: localhost:5000/aws-sqs-test-connector:latest
+          image: ko://github.com/fission/keda-connectors/aws-sqs-http-connector
           env:
             - name: TOPIC
               value: my_queue
@@ -30,9 +30,8 @@ spec:
               value: application/json
             - name: MAX_RETRIES
               value: "3"
-            - name: AWS_SQS_URL
-              value: http://localstack:31000/queue/
-            - name: AWS_REGION
-              value: us-east-1
-            - name: AWS_ENDPOINT
-              value: http://localstack:31000
+            - name: QUEUE_URL
+              value: http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/
+          envFrom:
+            - secretRef:
+                name: aws-secret
