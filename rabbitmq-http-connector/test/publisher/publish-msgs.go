@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/streadway/amqp"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 var rabbit_host = os.Getenv("RABBIT_HOST")

@@ -7,7 +7,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/streadway/amqp"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 
 	"github.com/fission/keda-connectors/common"
