@@ -183,7 +183,7 @@ jobs:
           sleep 50s
           cd redis-http-connector/test/kubernetes
           kubectl create namespace ot-operators
-          helm upgrade redis ot-helm/redis -f redis-values.yaml --install --namespace ot-operators
+          helm upgrade redis ot-helm/redis -f redis-values.yaml --install --namespace ot-operators --version 0.7.0
           sleep 50s
           kubectl get pods -n ot-operators
 
