@@ -40,9 +40,9 @@ type (
 		ErrorString  string
 	}
 
-	errorResponse struct {
-		Request
-		Response
+	ErrorResponse struct {
+		Request  Request
+		Response Response
 	}
 )
 
@@ -108,7 +108,7 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 		}
 	}
 
-	errResp := errorResponse{
+	errResp := ErrorResponse{
 		Request: Request{
 			Message:      message,
 			HTTPEndpoint: data.HTTPEndpoint,
