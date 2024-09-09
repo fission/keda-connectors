@@ -1,7 +1,9 @@
 package common
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -14,16 +16,35 @@ import (
 	"go.uber.org/zap"
 )
 
-// ConnectorMetadata contains common fields used by connectors
-type ConnectorMetadata struct {
-	Topic         string
-	ResponseTopic string
-	ErrorTopic    string
-	HTTPEndpoint  string
-	MaxRetries    int
-	ContentType   string
-	SourceName    string
-}
+type (
+	// ConnectorMetadata contains common fields used by connectors
+	ConnectorMetadata struct {
+		Topic         string
+		ResponseTopic string
+		ErrorTopic    string
+		HTTPEndpoint  string
+		MaxRetries    int
+		ContentType   string
+		SourceName    string
+	}
+
+	Request struct {
+		Message      string
+		HTTPEndpoint string
+		Headers      http.Header
+	}
+
+	Response struct {
+		ResponseBody string
+		StatusCode   int
+		ErrorString  string
+	}
+
+	errorResponse struct {
+		Request
+		Response
+	}
+)
 
 // ParseConnectorMetadata parses connector side common fields and returns as ConnectorMetadata or returns error
 func ParseConnectorMetadata() (ConnectorMetadata, error) {
@@ -87,12 +108,41 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 		}
 	}
 
+	errResp := errorResponse{
+		Request: Request{
+			Message:      message,
+			HTTPEndpoint: data.HTTPEndpoint,
+			Headers:      headers,
+		},
+		Response: Response{
+			ResponseBody: "",
+			StatusCode:   http.StatusInternalServerError,
+			ErrorString:  "",
+		},
+	}
+
 	if resp == nil {
-		return nil, fmt.Errorf("every function invocation retry failed; final retry gave empty response. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
+		errResp.Response.ErrorString = fmt.Sprintf("every function invocation retry failed; final retry gave empty response. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
+		errorBytes, err := json.Marshal(errResp)
+		if err != nil {
+			return nil, fmt.Errorf("failed marshalling error response. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
+		}
+		return nil, errors.New(string(errorBytes))
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode > 300 {
-		return nil, fmt.Errorf("request returned failure: %v. http_endpoint: %v, source: %v", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed reading response body. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
+		}
+		errResp.Response.ResponseBody = string(body)
+		errResp.Response.StatusCode = resp.StatusCode
+		errResp.Response.ErrorString = fmt.Sprintf("request returned failure: %v. http_endpoint: %v, source: %v", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
+		errorBytes, err := json.Marshal(errResp)
+		if err != nil {
+			return nil, fmt.Errorf("failed marshalling error response. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
+		}
+		return nil, errors.New(string(errorBytes))
 	}
 	return resp, nil
 }
