@@ -122,10 +122,10 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 	}
 
 	if resp == nil {
-		errResp.Response.ErrorString = fmt.Sprintf("every function invocation retry failed; final retry gave empty response. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
+		errResp.Response.ErrorString = fmt.Sprintf("every function invocation retry failed; final retry gave empty response. http_endpoint: %s, source: %s", data.HTTPEndpoint, data.SourceName)
 		errorBytes, err := json.Marshal(errResp)
 		if err != nil {
-			return nil, fmt.Errorf("failed marshalling error response. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
+			return nil, fmt.Errorf("failed marshalling error response. http_endpoint: %s, source: %s", data.HTTPEndpoint, data.SourceName)
 		}
 		return nil, errors.New(string(errorBytes))
 	}
@@ -133,14 +133,14 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 	if resp.StatusCode < 200 || resp.StatusCode > 300 {
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return nil, fmt.Errorf("failed reading response body. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
+			return nil, fmt.Errorf("failed reading response body. http_endpoint: %s, source: %s", data.HTTPEndpoint, data.SourceName)
 		}
 		errResp.Response.ResponseBody = string(body)
 		errResp.Response.StatusCode = resp.StatusCode
-		errResp.Response.ErrorString = fmt.Sprintf("request returned failure: %v. http_endpoint: %v, source: %v", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
+		errResp.Response.ErrorString = fmt.Sprintf("request returned failure: %d. http_endpoint: %s, source: %s", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
 		errorBytes, err := json.Marshal(errResp)
 		if err != nil {
-			return nil, fmt.Errorf("failed marshalling error response. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
+			return nil, fmt.Errorf("failed marshalling error response. http_endpoint: %s, source: %s", data.HTTPEndpoint, data.SourceName)
 		}
 		return nil, errors.New(string(errorBytes))
 	}
