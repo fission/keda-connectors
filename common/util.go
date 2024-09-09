@@ -92,7 +92,7 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode > 300 {
-		return nil, fmt.Errorf("request returned failure: %v. http_endpoint: %v, source: %v", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
+		return resp, fmt.Errorf("request returned failure: %v. http_endpoint: %v, source: %v", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
 	}
 	return resp, nil
 }
