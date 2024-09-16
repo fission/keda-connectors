@@ -28,21 +28,21 @@ type (
 		SourceName    string
 	}
 
-	Request struct {
+	FunctionHTTPRequest struct {
 		Message      string
 		HTTPEndpoint string
 		Headers      http.Header
 	}
 
-	Response struct {
+	FunctionHTTPResponse struct {
 		ResponseBody string
 		StatusCode   int
 		ErrorString  string
 	}
 
-	ErrorResponse struct {
-		Request  Request
-		Response Response
+	FunctionErrorDetails struct {
+		FunctionHTTPRequest  FunctionHTTPRequest
+		FunctionHTTPResponse FunctionHTTPResponse
 	}
 )
 
@@ -108,42 +108,14 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 		}
 	}
 
-	errResp := ErrorResponse{
-		Request: Request{
-			Message:      message,
-			HTTPEndpoint: data.HTTPEndpoint,
-			Headers:      headers,
-		},
-		Response: Response{
-			ResponseBody: "",
-			StatusCode:   http.StatusInternalServerError,
-			ErrorString:  "",
-		},
+	if resp == nil || resp.StatusCode < 200 || resp.StatusCode > 300 {
+		errResp := NewFunctionErrorDetails(message, data.HTTPEndpoint, headers)
+		err := errResp.UpdateResponseDetails(resp, data)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	if resp == nil {
-		errResp.Response.ErrorString = fmt.Sprintf("every function invocation retry failed; final retry gave empty response. http_endpoint: %s, source: %s", data.HTTPEndpoint, data.SourceName)
-		errorBytes, err := json.Marshal(errResp)
-		if err != nil {
-			return nil, fmt.Errorf("failed marshalling error response. http_endpoint: %s, source: %s", data.HTTPEndpoint, data.SourceName)
-		}
-		return nil, errors.New(string(errorBytes))
-	}
-
-	if resp.StatusCode < 200 || resp.StatusCode > 300 {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed reading response body. http_endpoint: %s, source: %s", data.HTTPEndpoint, data.SourceName)
-		}
-		errResp.Response.ResponseBody = string(body)
-		errResp.Response.StatusCode = resp.StatusCode
-		errResp.Response.ErrorString = fmt.Sprintf("request returned failure: %d. http_endpoint: %s, source: %s", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
-		errorBytes, err := json.Marshal(errResp)
-		if err != nil {
-			return nil, fmt.Errorf("failed marshalling error response. http_endpoint: %s, source: %s", data.HTTPEndpoint, data.SourceName)
-		}
-		return nil, errors.New(string(errorBytes))
-	}
 	return resp, nil
 }
 
@@ -171,4 +143,47 @@ func GetAwsConfig() (*aws.Config, error) {
 		return config, nil
 	}
 	return nil, errors.New("no aws configuration specified")
+}
+
+func NewFunctionErrorDetails(message, httpEndpoint string, headers http.Header) FunctionErrorDetails {
+	return FunctionErrorDetails{
+		FunctionHTTPRequest: FunctionHTTPRequest{
+			Message:      message,
+			HTTPEndpoint: httpEndpoint,
+			Headers:      headers,
+		},
+		FunctionHTTPResponse: FunctionHTTPResponse{
+			ResponseBody: "",
+			StatusCode:   http.StatusInternalServerError,
+			ErrorString:  "",
+		},
+	}
+}
+
+func (errResp *FunctionErrorDetails) UpdateResponseDetails(resp *http.Response, data ConnectorMetadata) error {
+	if resp == nil {
+		errResp.FunctionHTTPResponse.ErrorString = fmt.Sprintf("every function invocation retry failed; final retry gave empty response. http_endpoint: %s, source: %s", data.HTTPEndpoint, data.SourceName)
+		errorBytes, err := json.Marshal(errResp)
+		if err != nil {
+			return fmt.Errorf("failed marshalling error response. http_endpoint: %s, source: %s", data.HTTPEndpoint, data.SourceName)
+		}
+		return errors.New(string(errorBytes))
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode > 300 {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed reading response body. http_endpoint: %s, source: %s", data.HTTPEndpoint, data.SourceName)
+		}
+		errResp.FunctionHTTPResponse.ResponseBody = string(body)
+		errResp.FunctionHTTPResponse.StatusCode = resp.StatusCode
+		errResp.FunctionHTTPResponse.ErrorString = fmt.Sprintf("request returned failure: %d. http_endpoint: %s, source: %s", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
+		errorBytes, err := json.Marshal(errResp)
+		if err != nil {
+			return fmt.Errorf("failed marshalling error response. http_endpoint: %s, source: %s", data.HTTPEndpoint, data.SourceName)
+		}
+		return errors.New(string(errorBytes))
+	}
+
+	return nil
 }
