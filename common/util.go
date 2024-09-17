@@ -1,7 +1,9 @@
 package common
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -14,16 +16,35 @@ import (
 	"go.uber.org/zap"
 )
 
-// ConnectorMetadata contains common fields used by connectors
-type ConnectorMetadata struct {
-	Topic         string
-	ResponseTopic string
-	ErrorTopic    string
-	HTTPEndpoint  string
-	MaxRetries    int
-	ContentType   string
-	SourceName    string
-}
+type (
+	// ConnectorMetadata contains common fields used by connectors
+	ConnectorMetadata struct {
+		Topic         string
+		ResponseTopic string
+		ErrorTopic    string
+		HTTPEndpoint  string
+		MaxRetries    int
+		ContentType   string
+		SourceName    string
+	}
+
+	FunctionHTTPRequest struct {
+		Message      string
+		HTTPEndpoint string
+		Headers      http.Header
+	}
+
+	FunctionHTTPResponse struct {
+		ResponseBody string
+		StatusCode   int
+		ErrorString  string
+	}
+
+	FunctionErrorDetails struct {
+		FunctionHTTPRequest  FunctionHTTPRequest
+		FunctionHTTPResponse FunctionHTTPResponse
+	}
+)
 
 // ParseConnectorMetadata parses connector side common fields and returns as ConnectorMetadata or returns error
 func ParseConnectorMetadata() (ConnectorMetadata, error) {
@@ -87,13 +108,14 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 		}
 	}
 
-	if resp == nil {
-		return nil, fmt.Errorf("every function invocation retry failed; final retry gave empty response. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
+	if resp == nil || resp.StatusCode < 200 || resp.StatusCode > 300 {
+		errResp := NewFunctionErrorDetails(message, data.HTTPEndpoint, headers)
+		err := errResp.UpdateResponseDetails(resp, data)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	if resp.StatusCode < 200 || resp.StatusCode > 300 {
-		return nil, fmt.Errorf("request returned failure: %v. http_endpoint: %v, source: %v", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
-	}
 	return resp, nil
 }
 
@@ -121,4 +143,47 @@ func GetAwsConfig() (*aws.Config, error) {
 		return config, nil
 	}
 	return nil, errors.New("no aws configuration specified")
+}
+
+func NewFunctionErrorDetails(message, httpEndpoint string, headers http.Header) FunctionErrorDetails {
+	return FunctionErrorDetails{
+		FunctionHTTPRequest: FunctionHTTPRequest{
+			Message:      message,
+			HTTPEndpoint: httpEndpoint,
+			Headers:      headers,
+		},
+		FunctionHTTPResponse: FunctionHTTPResponse{
+			ResponseBody: "",
+			StatusCode:   http.StatusInternalServerError,
+			ErrorString:  "",
+		},
+	}
+}
+
+func (errResp *FunctionErrorDetails) UpdateResponseDetails(resp *http.Response, data ConnectorMetadata) error {
+	if resp == nil {
+		errResp.FunctionHTTPResponse.ErrorString = fmt.Sprintf("every function invocation retry failed; final retry gave empty response. http_endpoint: %s, source: %s", data.HTTPEndpoint, data.SourceName)
+		errorBytes, err := json.Marshal(errResp)
+		if err != nil {
+			return fmt.Errorf("failed marshalling error response. http_endpoint: %s, source: %s", data.HTTPEndpoint, data.SourceName)
+		}
+		return errors.New(string(errorBytes))
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode > 300 {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed reading response body. http_endpoint: %s, source: %s", data.HTTPEndpoint, data.SourceName)
+		}
+		errResp.FunctionHTTPResponse.ResponseBody = string(body)
+		errResp.FunctionHTTPResponse.StatusCode = resp.StatusCode
+		errResp.FunctionHTTPResponse.ErrorString = fmt.Sprintf("request returned failure: %d. http_endpoint: %s, source: %s", resp.StatusCode, data.HTTPEndpoint, data.SourceName)
+		errorBytes, err := json.Marshal(errResp)
+		if err != nil {
+			return fmt.Errorf("failed marshalling error response. http_endpoint: %s, source: %s", data.HTTPEndpoint, data.SourceName)
+		}
+		return errors.New(string(errorBytes))
+	}
+
+	return nil
 }
