@@ -29,34 +29,34 @@ func (conn redisConnector) consumeMessage(ctx context.Context) {
 		"KEDA-Source-Name":    {conn.connectordata.SourceName},
 	}
 
-	var messages []string
-	var listItr int64
 	forever := make(chan bool)
 
 	go func() {
-		listLength, err := conn.rdbConnection.LLen(ctx, conn.connectordata.Topic).Result()
-		if err != nil {
-			conn.logger.Fatal("Error in consuming queue: ", zap.Error(err))
-		}
-		for listItr = 0; listItr < listLength; listItr++ {
-			msg, err := conn.rdbConnection.LPop(ctx, conn.connectordata.Topic).Result()
+		for {
+			// BLPop will block and wait for a new message if the list is empty
+			msg, err := conn.rdbConnection.BLPop(ctx, 0, conn.connectordata.Topic).Result()
 			if err != nil {
 				conn.logger.Fatal("Error in consuming queue: ", zap.Error((err)))
 			}
-			messages = append(messages, msg)
-		}
-		for _, message := range messages {
-			response, err := common.HandleHTTPRequest(message, headers, conn.connectordata, conn.logger)
-			if err != nil {
-				conn.errorHandler(ctx, err)
-			} else {
-				defer response.Body.Close()
-				body, err := io.ReadAll(response.Body)
+
+			if len(msg) > 1 {
+				// BLPop returns a slice with topic and message, we need the second item
+				message := msg[1]
+				response, err := common.HandleHTTPRequest(message, headers, conn.connectordata, conn.logger)
 				if err != nil {
 					conn.errorHandler(ctx, err)
 				} else {
-					if success := conn.responseHandler(ctx, string(body)); success {
-						conn.logger.Info("Message sending to response successful")
+					body, err := io.ReadAll(response.Body)
+					if err != nil {
+						conn.errorHandler(ctx, err)
+					} else {
+						if success := conn.responseHandler(ctx, string(body)); success {
+							conn.logger.Info("Message sending to response successful")
+						}
+					}
+					err = response.Body.Close()
+					if err != nil {
+						conn.logger.Error(err.Error())
 					}
 				}
 			}
