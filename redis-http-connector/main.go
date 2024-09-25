@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/go-redis/redis/v8"
 	"go.uber.org/zap"
@@ -19,7 +21,7 @@ type redisConnector struct {
 	logger        *zap.Logger
 }
 
-func (conn redisConnector) consumeMessage(ctx context.Context) {
+func (conn redisConnector) consumeMessage(sigterm chan os.Signal) {
 
 	headers := http.Header{
 		"KEDA-Topic":          {conn.connectordata.Topic},
@@ -29,6 +31,7 @@ func (conn redisConnector) consumeMessage(ctx context.Context) {
 		"KEDA-Source-Name":    {conn.connectordata.SourceName},
 	}
 
+	var ctx = context.Background()
 	forever := make(chan bool)
 
 	go func() {
@@ -36,7 +39,8 @@ func (conn redisConnector) consumeMessage(ctx context.Context) {
 			// BLPop will block and wait for a new message if the list is empty
 			msg, err := conn.rdbConnection.BLPop(ctx, 0, conn.connectordata.Topic).Result()
 			if err != nil {
-				conn.logger.Fatal("Error in consuming queue: ", zap.Error((err)))
+				conn.logger.Error("Error in consuming queue: ", zap.Error((err)))
+				forever <- false
 			}
 
 			if len(msg) > 1 {
@@ -57,6 +61,7 @@ func (conn redisConnector) consumeMessage(ctx context.Context) {
 					err = response.Body.Close()
 					if err != nil {
 						conn.logger.Error(err.Error())
+						forever <- false
 					}
 				}
 			}
@@ -64,6 +69,7 @@ func (conn redisConnector) consumeMessage(ctx context.Context) {
 	}()
 	conn.logger.Info("Redis consumer up and running!")
 	<-forever
+	sigterm <- syscall.SIGTERM
 }
 
 func (conn redisConnector) errorHandler(ctx context.Context, err error) {
@@ -118,16 +124,20 @@ func main() {
 	}
 	password := os.Getenv("PASSWORD_FROM_ENV")
 
-	var ctx = context.Background()
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     address,
 		Password: password,
 	})
 
+	sigterm := make(chan os.Signal, 1)
 	conn := redisConnector{
 		rdbConnection: rdb,
 		connectordata: connectordata,
 		logger:        logger,
 	}
-	conn.consumeMessage(ctx)
+	conn.consumeMessage(sigterm)
+
+	signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM)
+	<-sigterm
+	logger.Info("Terminating: Redis consumer")
 }
