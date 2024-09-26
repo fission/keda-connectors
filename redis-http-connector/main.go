@@ -2,13 +2,16 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/go-redis/redis/v8"
 	"go.uber.org/zap"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
 	"github.com/fission/keda-connectors/common"
 )
@@ -19,8 +22,7 @@ type redisConnector struct {
 	logger        *zap.Logger
 }
 
-func (conn redisConnector) consumeMessage(ctx context.Context) {
-
+func (conn redisConnector) consumeMessage(ctx context.Context) error {
 	headers := http.Header{
 		"KEDA-Topic":          {conn.connectordata.Topic},
 		"KEDA-Response-Topic": {conn.connectordata.ResponseTopic},
@@ -29,41 +31,42 @@ func (conn redisConnector) consumeMessage(ctx context.Context) {
 		"KEDA-Source-Name":    {conn.connectordata.SourceName},
 	}
 
-	var messages []string
-	var listItr int64
-	forever := make(chan bool)
-
-	go func() {
-		listLength, err := conn.rdbConnection.LLen(ctx, conn.connectordata.Topic).Result()
+	for {
+		// Check if the context is done
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		// BLPop will block and wait for a new message if the list is empty
+		msg, err := conn.rdbConnection.BLPop(ctx, 0, conn.connectordata.Topic).Result()
 		if err != nil {
-			conn.logger.Fatal("Error in consuming queue: ", zap.Error(err))
+			return fmt.Errorf("error in consuming queue: %w", err)
 		}
-		for listItr = 0; listItr < listLength; listItr++ {
-			msg, err := conn.rdbConnection.LPop(ctx, conn.connectordata.Topic).Result()
-			if err != nil {
-				conn.logger.Fatal("Error in consuming queue: ", zap.Error((err)))
-			}
-			messages = append(messages, msg)
-		}
-		for _, message := range messages {
+
+		if len(msg) > 1 {
+			// BLPop returns a slice with topic and message, we need the second item
+			message := msg[1]
 			response, err := common.HandleHTTPRequest(message, headers, conn.connectordata, conn.logger)
 			if err != nil {
 				conn.errorHandler(ctx, err)
-			} else {
-				defer response.Body.Close()
-				body, err := io.ReadAll(response.Body)
-				if err != nil {
-					conn.errorHandler(ctx, err)
-				} else {
-					if success := conn.responseHandler(ctx, string(body)); success {
-						conn.logger.Info("Message sending to response successful")
-					}
-				}
+				continue // Skip to the next iteration
+			}
+
+			body, err := io.ReadAll(response.Body)
+			if err != nil {
+				conn.errorHandler(ctx, err)
+				response.Body.Close() // Close the body even if ReadAll fails
+				continue              // Skip to the next iteration
+			}
+
+			if success := conn.responseHandler(ctx, string(body)); success {
+				conn.logger.Info("Message sending to response successful")
+			}
+
+			if err := response.Body.Close(); err != nil {
+				conn.logger.Warn("Error closing response body", zap.Error(err))
 			}
 		}
-	}()
-	conn.logger.Info("Redis consumer up and running!")
-	<-forever
+	}
 }
 
 func (conn redisConnector) errorHandler(ctx context.Context, err error) {
@@ -99,6 +102,10 @@ func (conn redisConnector) responseHandler(ctx context.Context, response string)
 	return true
 }
 
+func (conn redisConnector) close() error {
+	return conn.rdbConnection.Close()
+}
+
 func main() {
 
 	logger, err := zap.NewProduction()
@@ -109,7 +116,7 @@ func main() {
 
 	connectordata, err := common.ParseConnectorMetadata()
 	if err != nil {
-		logger.Error("Error while parsing connector metadata", zap.Error(err))
+		logger.Fatal("Error while parsing connector metadata", zap.Error(err))
 	}
 
 	address := os.Getenv("ADDRESS")
@@ -118,16 +125,41 @@ func main() {
 	}
 	password := os.Getenv("PASSWORD_FROM_ENV")
 
-	var ctx = context.Background()
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     address,
 		Password: password,
 	})
 
+	ctx, cancel := context.WithCancel(signals.SetupSignalHandler())
+	defer cancel()
+
+	wg := sync.WaitGroup{}
 	conn := redisConnector{
 		rdbConnection: rdb,
 		connectordata: connectordata,
 		logger:        logger,
 	}
-	conn.consumeMessage(ctx)
+	defer func() {
+		if err := conn.close(); err != nil {
+			logger.Error("Error closing Redis connection", zap.Error(err))
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			if err := conn.consumeMessage(ctx); err != nil {
+				if err == context.Canceled || err == context.DeadlineExceeded {
+					conn.logger.Info("Context cancelled, stopping consumer")
+					return
+				}
+				logger.Error("Error in consuming message", zap.Error(err))
+			}
+			// Remove the context check here, as it's now handled in consumeMessage
+			conn.logger.Info("Restarting consumer")
+		}
+	}()
+	wg.Wait()
+	logger.Info("Terminating: Redis consumer")
 }
