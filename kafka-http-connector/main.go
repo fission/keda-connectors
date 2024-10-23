@@ -220,7 +220,7 @@ func (conn *kafkaConnector) ConsumeClaim(session sarama.ConsumerGroupSession, cl
 		// Set the headers came from Kafka record
 		for _, h := range message.Headers {
 			if utf8.ValidString(string(h.Value)) {
-				headers.Add(string(h.Key), string(h.Value))
+				headers.Set(string(h.Key), string(h.Value))
 			}
 		}
 
