@@ -30,7 +30,6 @@ type jetstreamConnector struct {
 }
 
 func main() {
-
 	host := os.Getenv("NATS_SERVER")
 	consumer := os.Getenv("CONSUMER")
 	ackwait := os.Getenv("ACKWAIT")
@@ -40,7 +39,11 @@ func main() {
 		log.Fatalf("can't initialize zap logger: %v", err)
 	}
 
-	nc, _ := nats.Connect(host)
+	nc, err := nats.Connect(host)
+	if err != nil {
+		logger.Fatal("error while connecting to NATS:", zap.Error(err))
+	}
+
 	js, err := nc.JetStream()
 	if err != nil {
 		logger.Fatal("error while getting jetstream context:", zap.Error(err))
@@ -69,7 +72,7 @@ func main() {
 
 	err = conn.consumeMessage()
 	if err != nil {
-		conn.logger.Fatal("error occurred while parsing metadata", zap.Error(err))
+		conn.logger.Fatal("error occurred while consuming messages", zap.Error(err))
 	}
 }
 
@@ -117,7 +120,7 @@ func (conn jetstreamConnector) consumeMessage() error {
 		// will be reading records from the start from the stream.
 	}, nats.Durable(conn.consumer), nats.ManualAck(), nats.AckWait(ackwait))
 	if err != nil {
-		conn.logger.Debug("error occurred while parsing metadata", zap.Error(err))
+		conn.logger.Fatal("error occurred while subscribing to topic", zap.Error(err))
 		return err
 	}
 
@@ -129,8 +132,9 @@ func (conn jetstreamConnector) consumeMessage() error {
 		conn.logger.Info("received signal", zap.String("signal", sig.String()))
 		cancel()
 		<-signalChan
-		panic("double signal received")
+		conn.logger.Warn("double signal received, shutting down gracefully")
 	}()
+
 	<-ctx.Done()
 	conn.logger.Info("unsubscribing and closing connection...")
 	err = sub.Unsubscribe()
@@ -138,11 +142,12 @@ func (conn jetstreamConnector) consumeMessage() error {
 		conn.logger.Error("error while unsubscribing", zap.Error(err))
 	}
 
+	close(conn.concurrentSem)
+
 	return nil
 }
 
 func (conn jetstreamConnector) handleHTTPRequest(msg *nats.Msg) {
-
 	headers := http.Header{
 		"Topic":        {conn.connectordata.Topic},
 		"RespTopic":    {conn.connectordata.ResponseTopic},
@@ -155,26 +160,24 @@ func (conn jetstreamConnector) handleHTTPRequest(msg *nats.Msg) {
 
 	resp, err := common.HandleHTTPRequest(string(msg.Data), headers, conn.connectordata, conn.logger)
 	if err != nil {
-		conn.logger.Info(err.Error())
+		conn.logger.Error("error handling HTTP request", zap.Error(err))
 		conn.errorHandler(err)
+		conn.acknowledgeMsg(msg)
 	} else {
 		defer resp.Body.Close()
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			conn.logger.Info(err.Error())
+			conn.logger.Error("error reading response body", zap.Error(err))
 			conn.errorHandler(err)
+			conn.acknowledgeMsg(msg)
 		} else {
 			if success := conn.responseHandler(body); success {
-				err = msg.Ack()
-				if err != nil {
-					conn.logger.Info(err.Error())
-					conn.errorHandler(err)
-				}
-				conn.logger.Info("done processing message",
-					zap.String("message", string(body)))
+				conn.acknowledgeMsg(msg)
+				conn.logger.Info("done processing message", zap.String("message", string(body)))
 			}
 		}
 	}
+
 	<-conn.concurrentSem
 }
 
@@ -199,7 +202,6 @@ func (conn jetstreamConnector) responseHandler(response []byte) bool {
 }
 
 func (conn jetstreamConnector) errorHandler(err error) {
-
 	if len(conn.connectordata.ErrorTopic) == 0 {
 		conn.logger.Warn("error topic not set")
 		return
@@ -212,5 +214,12 @@ func (conn jetstreamConnector) errorHandler(err error) {
 			zap.String("source", conn.connectordata.SourceName),
 			zap.String("message", publishErr.Error()),
 			zap.String("topic", conn.connectordata.ErrorTopic))
+	}
+}
+
+func (conn jetstreamConnector) acknowledgeMsg(msg *nats.Msg) {
+	err := msg.Ack()
+	if err != nil {
+		conn.logger.Error("error acknowledging message", zap.Error(err))
 	}
 }
