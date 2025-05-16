@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 
 	"github.com/fission/keda-connectors/common"
@@ -284,7 +283,7 @@ func main() {
 		return
 	}
 
-	s, err := session.NewSession(config)
+	s, err := common.CreateValidatedSession(config)
 	if err != nil {
 		logger.Error("not able to create the session", zap.Error(err))
 		return

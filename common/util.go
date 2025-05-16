@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
@@ -118,30 +118,43 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 	return resp, nil
 }
 
-// GetAwsConfig get's the configuration required to connect to aws
+/*
+The config will be automatically loaded by the AWS SDK.
+The order configuration is loaded in is:
+- Environment Variables
+- Shared Credentials file
+- Shared Configuration file (if SharedConfig is enabled)
+- EC2 Instance Metadata (credentials only)
+GetAwsConfig allows override of aws region & endpoint
+*/
 func GetAwsConfig() (*aws.Config, error) {
-	if os.Getenv("AWS_REGION") == "" {
-		return nil, errors.New("aws region required")
+	config := &aws.Config{}
+
+	if os.Getenv("AWS_REGION") != "" {
+		region := aws.String(os.Getenv("AWS_REGION"))
+		config.Region = region
 	}
-	config := &aws.Config{
-		Region: aws.String(os.Getenv("AWS_REGION")),
-	}
+
 	if os.Getenv("AWS_ENDPOINT") != "" {
 		endpoint := os.Getenv("AWS_ENDPOINT")
 		config.Endpoint = &endpoint
-		return config, nil
 	}
-	if os.Getenv("AWS_ACCESS_KEY_ID") != "" && os.Getenv("AWS_SECRET_ACCESS_KEY") != "" {
-		config.Credentials = credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS_KEY_ID"),
-			os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
-		return config, nil
+
+	return config, nil
+}
+
+func CreateValidatedSession(config *aws.Config) (*session.Session, error) {
+	sess, err := session.NewSession(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AWS session: %w", err)
 	}
-	if os.Getenv("AWS_CRED_PATH") != "" && os.Getenv("AWS_CRED_PROFILE") != "" {
-		config.Credentials = credentials.NewSharedCredentials(os.Getenv("AWS_CRED_PATH"),
-			os.Getenv("AWS_CRED_PROFILE"))
-		return config, nil
+
+	_, err = sess.Config.Credentials.Get()
+	if err != nil {
+		return nil, fmt.Errorf("invalid AWS credentials: %w", err)
 	}
-	return nil, errors.New("no aws configuration specified")
+
+	return sess, nil
 }
 
 func NewFunctionErrorDetails(message, httpEndpoint string, headers http.Header) FunctionErrorDetails {
