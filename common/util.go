@@ -130,10 +130,11 @@ GetAwsConfig allows override of aws region & endpoint
 func GetAwsConfig() (*aws.Config, error) {
 	config := &aws.Config{}
 
-	if os.Getenv("AWS_REGION") != "" {
-		region := aws.String(os.Getenv("AWS_REGION"))
-		config.Region = region
+	if os.Getenv("AWS_REGION") == "" {
+		return nil, errors.New("aws region required")
 	}
+
+	config.Region = aws.String(os.Getenv("AWS_REGION"))
 
 	if os.Getenv("AWS_ENDPOINT") != "" {
 		endpoint := os.Getenv("AWS_ENDPOINT")
