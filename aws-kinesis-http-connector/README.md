@@ -36,6 +36,7 @@ This application uses the AWS SDK's default credential provider chain to authent
 
 ##### Optional Environment Variables
 
+- `AWS_SKIP_CREDENTIALS_VALIDATION`: Set to "true" to skip the validation of AWS session
 - `AWS_ENDPOINT`: Custom AWS endpoint URL (useful for local development or testing)
 - `AWS_PROFILE`: Profile name from your shared credentials file
 - `AWS_SDK_LOAD_CONFIG`: Set to "true" to load configuration from shared config file (~/.aws/config)

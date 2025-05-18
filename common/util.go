@@ -150,6 +150,12 @@ func CreateValidatedSession(config *aws.Config) (*session.Session, error) {
 		return nil, fmt.Errorf("failed to create AWS session: %w", err)
 	}
 
+	// Skip credentials validation if explicitly requested
+	skipValidation := strings.EqualFold(os.Getenv("AWS_SKIP_CREDENTIALS_VALIDATION"), "true")
+	if skipValidation {
+		return sess, nil
+	}
+
 	_, err = sess.Config.Credentials.Get()
 	if err != nil {
 		return nil, fmt.Errorf("invalid AWS credentials: %w", err)
