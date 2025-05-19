@@ -14,19 +14,36 @@ The job of the connector is to read messages from the stream, call an HTTP endpo
 
 ## Ways to connect to AWS
 
-`AWS_REGION`: Region is mandatory for any aws connection.
+This application uses the AWS SDK's default credential provider chain to authenticate with AWS services. The credential provider chain tries the following sources in order:
 
-1. Through AWS endpoint
-   - `AWS_ENDPOINT` : Kinesis endpoint on which it is running, for local it can be [http://localhost:4568](http://localhost:4568)
+1. **Environment Variables**
+   - `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
+   - Optional: `AWS_SESSION_TOKEN` (for temporary credentials)
 
-2. Through AWS aws key and secret
+2. **Shared Credential File** (`~/.aws/credentials`)
+   - Default profile or profile specified by `AWS_PROFILE` environment variable
 
-   - `AWS_ACCESS_KEY_ID`: aws access key of your account.
-   - `AWS_SECRET_ACCESS_KEY`: aws secret key got from your account.
+3. **IAM Role for Amazon EC2** or **ECS Task Role**
+   - Used automatically when running in EC2 or ECS environments
 
-3. Through AWS credentials
+4. **Web Identity Token** (for EKS and other Kubernetes environments)
+   - Used automatically when `AWS_WEB_IDENTITY_TOKEN_FILE` is set
+   - Supports IAM Roles for Service Accounts (IRSA) in EKS
 
-   - `AWS_CRED_PATH`: Path where aws credentials are present, ex ~/.aws/credentials.
-   - `AWS_CRED_PROFILE`: Profile With which to connect to AWS, present in  ~/.aws/credentials file.
+##### Required Environment Variables
 
-More information about the above parameters and how to define it scaledobject refer [AWS SQS scaler doc](https://keda.sh/docs/1.5/scalers/aws-sqs/).
+- `AWS_REGION`: AWS region where your resources are located
+
+##### Optional Environment Variables
+
+- `AWS_SKIP_CREDENTIALS_VALIDATION`: Set to "true" to skip the validation of AWS session
+- `AWS_ENDPOINT`: Custom AWS endpoint URL (useful for local development or testing)
+- `AWS_PROFILE`: Profile name from your shared credentials file
+- `AWS_SDK_LOAD_CONFIG`: Set to "true" to load configuration from shared config file (~/.aws/config)
+- `AWS_WEB_IDENTITY_TOKEN_FILE`: Path to the web identity token file (for EKS and Kubernetes pod-based authentication)
+- `AWS_ROLE_ARN`: ARN of the role to assume when using web identity federation
+
+
+For more information refer to:
+- AWS authentication and configuration -> [AWS SDK for Go documentation](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html).
+- Keda AWS Kinesis ScaledObject-> [AWS Kinesis scaler doc](https://keda.sh/docs/1.5/scalers/aws-kinesis/).

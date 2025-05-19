@@ -12,7 +12,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 
 	"github.com/fission/keda-connectors/common"
@@ -194,7 +193,7 @@ func main() {
 		return
 	}
 
-	sess, err := session.NewSession(config)
+	sess, err := common.CreateValidatedSession(config)
 	if err != nil {
 		logger.Error("not able create session using aws configuration", zap.Error(err))
 		return
