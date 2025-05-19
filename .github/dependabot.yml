@@ -10,16 +10,6 @@ updates:
         patterns:
           - "*"
 
-  - package-ecosystem: docker
-    directory: /
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-    groups:
-      docker-images:
-        patterns:
-          - "*"
-
   - package-ecosystem: gomod
     directory: /
     schedule:
