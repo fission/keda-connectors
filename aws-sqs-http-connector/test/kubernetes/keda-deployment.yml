@@ -33,7 +33,7 @@ spec:
             - name: QUEUE_URL
               value: http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/
             - name: AWS_SKIP_CREDENTIALS_VALIDATION
-              value: true
+              value: "true"
           envFrom:
             - secretRef:
                 name: aws-secret
