@@ -1,32 +1,42 @@
+version: "2"
 linters:
   enable:
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - typecheck
-    - unused
-    # Additional linters
-    - gofmt
-    - goimports
-    - misspell
-    - nakedret
-    - unconvert
     - bodyclose
     - dogsled
     - dupl
-    # - gosec
+    - misspell
+    - nakedret
     - nilerr
     - prealloc
-    # - revive
+    - unconvert
     - unparam
-    # - wrapcheck
-    # - gocritic
-linters-settings:
-  errcheck:
-    ignore: go.uber.org/zap:Sync
-  goimports:
-    # put imports beginning with prefix after 3rd-party packages;
-    # it's a comma-separated list of prefixes
-    local-prefixes: github.com/fission/fission,github.com/fission/keda-connectors
+  settings:
+    errcheck:
+      exclude-functions:
+        - (*go.uber.org/zap.Logger).Sync
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/fission/fission
+        - github.com/fission/keda-connectors
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
