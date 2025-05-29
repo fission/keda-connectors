@@ -188,6 +188,6 @@ func GetGCPInfo() (*GCPPubsubConnInfo, error) {
 		return connInfo, nil
 	}
 
-	return nil, errors.New("provide credentials ")
+	return nil, errors.New("provide credentials")
 
 }
