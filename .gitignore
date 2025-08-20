@@ -8,6 +8,12 @@
 # Test binary, built with `go test -c`
 *.test
 
+# Go build binaries by directory name
+aws-kinesis-http-connector/aws-kinesis-http-connector
+aws-sqs-http-connector/aws-sqs-http-connector
+aws-sqs-http-connector/test/validate/validate
+gcp-pubsub-http-connector/gcp-pubsub-http-connector
+
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
