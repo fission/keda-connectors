@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
@@ -119,49 +120,41 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 }
 
 /*
-The config will be automatically loaded by the AWS SDK.
+GetAwsV2Config loads configuration using AWS SDK v2.
 The order configuration is loaded in is:
-- Environment Variables
+- Environment Variables  
 - Shared Credentials file
-- Shared Configuration file (if SharedConfig is enabled)
+- Shared Configuration file
 - EC2 Instance Metadata (credentials only)
-GetAwsConfig allows override of aws region & endpoint
+GetAwsV2Config allows override of aws region & endpoint
 */
-func GetAwsConfig() (*aws.Config, error) {
-	config := &aws.Config{}
-
-	if os.Getenv("AWS_REGION") == "" {
-		return nil, errors.New("aws region required")
-	}
-
-	config.Region = aws.String(os.Getenv("AWS_REGION"))
-
-	if os.Getenv("AWS_ENDPOINT") != "" {
-		endpoint := os.Getenv("AWS_ENDPOINT")
-		config.Endpoint = &endpoint
-	}
-
-	return config, nil
-}
-
-func CreateValidatedSession(config *aws.Config) (*session.Session, error) {
-	sess, err := session.NewSession(config)
+func GetAwsV2Config(ctx context.Context) (aws.Config, error) {
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create AWS session: %w", err)
+		return aws.Config{}, fmt.Errorf("failed to load AWS config: %w", err)
+	}
+
+	// Override region if specified
+	if region := os.Getenv("AWS_REGION"); region != "" {
+		cfg.Region = region
+	}
+
+	// Override endpoint if specified
+	if endpoint := os.Getenv("AWS_ENDPOINT"); endpoint != "" {
+		cfg.BaseEndpoint = &endpoint
 	}
 
 	// Skip credentials validation if explicitly requested
 	skipValidation := strings.EqualFold(os.Getenv("AWS_SKIP_CREDENTIALS_VALIDATION"), "true")
-	if skipValidation {
-		return sess, nil
+	if !skipValidation {
+		// Test credentials by trying to retrieve them
+		_, err = cfg.Credentials.Retrieve(ctx)
+		if err != nil {
+			return aws.Config{}, fmt.Errorf("invalid AWS credentials: %w", err)
+		}
 	}
 
-	_, err = sess.Config.Credentials.Get()
-	if err != nil {
-		return nil, fmt.Errorf("invalid AWS credentials: %w", err)
-	}
-
-	return sess, nil
+	return cfg, nil
 }
 
 func NewFunctionErrorDetails(message, httpEndpoint string, headers http.Header) FunctionErrorDetails {

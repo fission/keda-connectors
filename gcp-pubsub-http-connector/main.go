@@ -9,7 +9,7 @@ import (
 	"os"
 	"sync"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 	"go.uber.org/zap"
 	"google.golang.org/api/option"
 
@@ -75,7 +75,7 @@ func (conn pubsubConnector) consumeMessage() {
 	}
 
 	var mu sync.Mutex
-	sub := client.Subscription(conn.pubsubInfo.SubscriptionID)
+	sub := client.Subscriber(conn.pubsubInfo.SubscriptionID)
 
 	err = sub.Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
 		mu.Lock()
@@ -126,7 +126,7 @@ func (conn pubsubConnector) responseOrErrorHandler(topicID string, response stri
 		conn.logger.Error("pubsub.NewClient: %v", zap.Error(err))
 	}
 
-	t := client.Topic(topicID)
+	t := client.Publisher(topicID)
 	result := t.Publish(ctx, &pubsub.Message{
 		Data:       []byte(response),
 		Attributes: convHeadersToAttr(headers),

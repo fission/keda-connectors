@@ -1,14 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
 )
 
 // comment
@@ -25,22 +25,22 @@ func main() {
 	if endpoint == "" {
 		log.Fatal("AWS_ENDPOINT is not set")
 	}
-	config := &aws.Config{
-		Region:   &region,
-		Endpoint: &endpoint,
+	ctx := context.Background()
+	cfg, err := config.LoadDefaultConfig(ctx, 
+		config.WithRegion(region),
+		config.WithBaseEndpoint(endpoint),
+	)
+	if err != nil {
+		log.Fatal("Error while loading config", err)
 	}
 
-	sess, err := session.NewSession(config)
-	if err != nil {
-		log.Fatal("Error while creating session", err)
-	}
-	svc := sqs.New(sess)
+	svc := sqs.NewFromConfig(cfg)
 
 	msg := "Hello Msg"
 	url := queueURL + "/my_queue"
 	log.Println("Sending message to queue", url)
-	_, err = svc.SendMessage(&sqs.SendMessageInput{
-		DelaySeconds: aws.Int64(10),
+	_, err = svc.SendMessage(ctx, &sqs.SendMessageInput{
+		DelaySeconds: 10,
 		MessageBody:  &msg,
 		QueueUrl:     &url,
 	})
@@ -50,11 +50,9 @@ func main() {
 	time.Sleep(5 * time.Second)
 	urlRep := queueURL + "/responseTopic"
 	log.Println("Receiving message from queue", urlRep)
-	var maxNumberOfMessages = int64(1)
-	var waitTimeSeconds = int64(5)
-	output, err := svc.ReceiveMessage(&sqs.ReceiveMessageInput{
-		MaxNumberOfMessages: &maxNumberOfMessages,
-		WaitTimeSeconds:     &waitTimeSeconds,
+	output, err := svc.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
+		MaxNumberOfMessages: 1,
+		WaitTimeSeconds:     5,
 		QueueUrl:            &urlRep,
 	})
 	if err != nil {
