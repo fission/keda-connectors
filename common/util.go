@@ -122,7 +122,7 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 /*
 GetAwsV2Config loads configuration using AWS SDK v2.
 The order configuration is loaded in is:
-- Environment Variables  
+- Environment Variables
 - Shared Credentials file
 - Shared Configuration file
 - EC2 Instance Metadata (credentials only)

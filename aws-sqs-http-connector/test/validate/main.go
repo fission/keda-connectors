@@ -26,7 +26,7 @@ func main() {
 		log.Fatal("AWS_ENDPOINT is not set")
 	}
 	ctx := context.Background()
-	cfg, err := config.LoadDefaultConfig(ctx, 
+	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion(region),
 		config.WithBaseEndpoint(endpoint),
 	)

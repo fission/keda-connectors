@@ -189,7 +189,7 @@ func main() {
 	if err != nil {
 		logger.Fatal("failed to parse connector metadata", zap.Error(err))
 	}
-	
+
 	ctx := context.Background()
 	cfg, err := common.GetAwsV2Config(ctx)
 	if err != nil {
