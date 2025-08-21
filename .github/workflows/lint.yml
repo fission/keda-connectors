@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  GOLANGCI_LINT_VERSION: v2.1.6
+  GOLANGCI_LINT_VERSION: v2.4.0
   GOLANGCI_LINT_TIMEOUT: 10m
 
 concurrency:
