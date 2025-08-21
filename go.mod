@@ -1,6 +1,6 @@
 module github.com/fission/keda-connectors
 
-go 1.24.3
+go 1.25.0
 
 require (
 	cloud.google.com/go/pubsub/v2 v2.0.0
