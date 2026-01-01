@@ -9,7 +9,7 @@ import (
 	"os"
 	"sync"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 	"go.uber.org/zap"
 	"google.golang.org/api/option"
 
@@ -35,7 +35,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("can't initialize zap logger: %v", err)
 	}
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 
 	connectordata, err := common.ParseConnectorMetadata()
 	if err != nil {
@@ -55,11 +57,13 @@ func main() {
 	}
 
 	logger.Info("Conn: %s", zap.String("Response topic", conn.connectordata.ResponseTopic))
-	conn.consumeMessage()
+	err = conn.consumeMessage()
+	if err != nil {
+		logger.Error("Error in consuming message from pubsub", zap.Error(err))
+	}
 }
 
-func (conn pubsubConnector) consumeMessage() {
-
+func (conn pubsubConnector) consumeMessage() error {
 	creds := []byte(conn.pubsubInfo.Creds)
 	headers := http.Header{
 		"KEDA-Topic":          {conn.connectordata.Topic},
@@ -72,10 +76,11 @@ func (conn pubsubConnector) consumeMessage() {
 	client, err := pubsub.NewClient(ctx, conn.pubsubInfo.ProjectID, option.WithCredentialsJSON(creds))
 	if err != nil {
 		conn.logger.Error(err.Error())
+		return err
 	}
 
 	var mu sync.Mutex
-	sub := client.Subscription(conn.pubsubInfo.SubscriptionID)
+	sub := client.Subscriber(conn.pubsubInfo.SubscriptionID)
 
 	err = sub.Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
 		mu.Lock()
@@ -113,9 +118,9 @@ func (conn pubsubConnector) consumeMessage() {
 
 	})
 	if err != nil {
-		conn.logger.Error(err.Error())
+		return err
 	}
-
+	return nil
 }
 
 func (conn pubsubConnector) responseOrErrorHandler(topicID string, response string, headers http.Header) {
@@ -126,7 +131,7 @@ func (conn pubsubConnector) responseOrErrorHandler(topicID string, response stri
 		conn.logger.Error("pubsub.NewClient: %v", zap.Error(err))
 	}
 
-	t := client.Topic(topicID)
+	t := client.Publisher(topicID)
 	result := t.Publish(ctx, &pubsub.Message{
 		Data:       []byte(response),
 		Attributes: convHeadersToAttr(headers),

@@ -144,7 +144,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("can't initialize zap logger: %v", err)
 	}
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 
 	connectordata, err := common.ParseConnectorMetadata()
 	if err != nil {

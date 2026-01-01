@@ -28,7 +28,7 @@ func main() {
 		Password: password,
 	})
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		current_time := time.Now()
 		secs := current_time.Unix()
 		resp := publish_data{

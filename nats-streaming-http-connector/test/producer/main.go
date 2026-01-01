@@ -18,7 +18,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		err := sc.Publish("request-topic", []byte("Test"+strconv.Itoa(i)))
 		if err != nil {
 			log.Fatal(err)

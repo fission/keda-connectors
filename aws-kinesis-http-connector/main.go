@@ -10,8 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/kinesis"
+	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 
 	"github.com/fission/keda-connectors/common"
 
@@ -20,23 +21,23 @@ import (
 
 type pullFunc func(*record) error
 type record struct {
-	*kinesis.Record
+	*types.Record
 	shardID            string
 	millisBehindLatest *int64
 }
 type awsKinesisConnector struct {
 	ctx           context.Context
-	client        *kinesis.Kinesis
+	client        *kinesis.Client
 	connectordata common.ConnectorMetadata
 	logger        *zap.Logger
-	shardc        chan *kinesis.Shard
-	maxRecords    int64
+	shardc        chan *types.Shard
+	maxRecords    int32
 }
 
 // listShards get called every 30sec to get all the shards
-func (conn *awsKinesisConnector) listShards() ([]*kinesis.Shard, error) {
+func (conn *awsKinesisConnector) listShards() ([]types.Shard, error) {
 	// call DescribeStream to get updated shards
-	stream, err := conn.client.DescribeStream(&kinesis.DescribeStreamInput{
+	stream, err := conn.client.DescribeStream(context.TODO(), &kinesis.DescribeStreamInput{
 		StreamName: &conn.connectordata.Topic,
 	})
 	if err != nil {
@@ -65,7 +66,7 @@ func (conn *awsKinesisConnector) findNewShards() {
 				// send only new shards
 				_, loaded := shards.LoadOrStore(*s.ShardId, s)
 				if !loaded {
-					conn.shardc <- s
+					conn.shardc <- &s
 				}
 			}
 		}
@@ -82,16 +83,16 @@ func (conn *awsKinesisConnector) getIterator(shardID string, checkpoint string) 
 	if checkpoint != "" {
 		// Start from, where we left
 		params.StartingSequenceNumber = aws.String(checkpoint)
-		params.ShardIteratorType = aws.String(kinesis.ShardIteratorTypeAfterSequenceNumber)
-		iteratorOutput, err := conn.client.GetShardIteratorWithContext(conn.ctx, params)
+		params.ShardIteratorType = types.ShardIteratorTypeAfterSequenceNumber
+		iteratorOutput, err := conn.client.GetShardIterator(conn.ctx, params)
 		if err != nil {
 			return nil, err
 		}
 		return iteratorOutput, err
 	}
 	// Start from, oldest record in the shard
-	params.ShardIteratorType = aws.String(kinesis.ShardIteratorTypeTrimHorizon)
-	iteratorOutput, err := conn.client.GetShardIteratorWithContext(conn.ctx, params)
+	params.ShardIteratorType = types.ShardIteratorTypeTrimHorizon
+	iteratorOutput, err := conn.client.GetShardIterator(conn.ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +102,7 @@ func (conn *awsKinesisConnector) getIterator(shardID string, checkpoint string) 
 // getRecords get the data for the specific shard
 func (conn *awsKinesisConnector) getRecords(shardIterator *string) (*kinesis.GetRecordsOutput, error) {
 	// get records use shard iterator for making request
-	records, err := conn.client.GetRecords(&kinesis.GetRecordsInput{
+	records, err := conn.client.GetRecords(context.TODO(), &kinesis.GetRecordsInput{
 		ShardIterator: shardIterator,
 		Limit:         &conn.maxRecords,
 	})
@@ -158,7 +159,7 @@ func (conn *awsKinesisConnector) pullRecords(fn pullFunc) {
 
 					for _, r := range resp.Records {
 						// send records
-						err := fn(&record{r, shardID, resp.MillisBehindLatest})
+						err := fn(&record{&r, shardID, resp.MillisBehindLatest})
 						checkpoints.Store(shardID, *r.SequenceNumber)
 						if err != nil {
 							conn.logger.Error("error in processing records",
@@ -233,7 +234,7 @@ func (conn *awsKinesisConnector) responseHandler(r *record, response string) err
 			StreamName:                aws.String(conn.connectordata.ResponseTopic), // Required
 			SequenceNumberForOrdering: aws.String(*r.SequenceNumber),
 		}
-		_, err := conn.client.PutRecord(params)
+		_, err := conn.client.PutRecord(context.TODO(), params)
 		if err != nil {
 			return err
 		}
@@ -250,7 +251,7 @@ func (conn *awsKinesisConnector) errorHandler(r *record, errMsg string) {
 			SequenceNumberForOrdering: aws.String(*r.SequenceNumber),
 		}
 
-		_, err := conn.client.PutRecord(params)
+		_, err := conn.client.PutRecord(context.TODO(), params)
 		if err != nil {
 			conn.logger.Error("failed to publish message to error topic",
 				zap.Error(err),
@@ -272,29 +273,27 @@ func main() {
 	if err != nil {
 		log.Fatalf("can't initialize zap logger: %v", err)
 	}
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config, err := common.GetAwsConfig()
+	config, err := common.GetAwsConfig(ctx)
 	if err != nil {
 		logger.Error("failed to fetch aws config", zap.Error(err))
 		return
 	}
 
-	s, err := common.CreateValidatedSession(config)
-	if err != nil {
-		logger.Error("not able to create the session", zap.Error(err))
-		return
-	}
-	kc := kinesis.New(s)
+	kc := kinesis.NewFromConfig(config)
 	connectordata, err := common.ParseConnectorMetadata()
 	if err != nil {
 		logger.Error("error while parsing metadata", zap.Error(err))
 		return
 	}
-	if err := kc.WaitUntilStreamExists(&kinesis.DescribeStreamInput{StreamName: &connectordata.Topic}); err != nil {
+	waiter := kinesis.NewStreamExistsWaiter(kc)
+	if err := waiter.Wait(context.TODO(), &kinesis.DescribeStreamInput{StreamName: &connectordata.Topic}, 5*time.Minute); err != nil {
 		logger.Error("not able to connect to kinesis stream", zap.Error(err))
 		return
 	}
@@ -306,7 +305,7 @@ func main() {
 		cancel() // call cancellation
 	}()
 
-	shardc := make(chan *kinesis.Shard, 1)
+	shardc := make(chan *types.Shard, 1)
 
 	conn := awsKinesisConnector{
 		ctx:           ctx,

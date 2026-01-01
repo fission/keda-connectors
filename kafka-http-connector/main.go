@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -16,7 +17,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/IBM/sarama"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
 	"github.com/fission/keda-connectors/common"
@@ -72,7 +72,7 @@ func parseKafkaMetadata(logger *zap.Logger) (kafkaMetadata, error) {
 		meta.bootstrapServers = strings.Split(os.Getenv("BROKER_LIST"), ",")
 	}
 	if os.Getenv("CONSUMER_GROUP") == "" {
-		return meta, errors.New("No consumerGroup given")
+		return meta, errors.New("no consumerGroup given")
 	}
 	meta.consumerGroup = os.Getenv("CONSUMER_GROUP")
 
@@ -85,7 +85,7 @@ func parseKafkaMetadata(logger *zap.Logger) (kafkaMetadata, error) {
 
 	// Check offsetResetPolicy is valid
 	if offsetResetPolicy != "earliest" && offsetResetPolicy != "latest" {
-		return meta, errors.Errorf("offsetResetPolicy %s not support. It should be one of earliest or latest", offsetResetPolicy)
+		return meta, fmt.Errorf("offsetResetPolicy %s not support. It should be one of earliest or latest", offsetResetPolicy)
 	}
 	meta.offsetResetPolicy = offsetResetPolicy
 
@@ -317,7 +317,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("can't initialize zap logger: %v", err)
 	}
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 
 	metadata, err := parseKafkaMetadata(logger)
 	if err != nil {

@@ -14,7 +14,6 @@ func main() {
 	password := ""
 
 	var ctx = context.Background()
-	var listItr int64
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     address,
 		Password: password,
@@ -25,7 +24,7 @@ func main() {
 		log.Fatalf("Error in consuming queue: %v", err)
 	}
 
-	for listItr = 0; listItr < listLength; listItr++ {
+	for range listLength {
 		msg, err := rdb.LPop(ctx, "response-topic").Result()
 
 		if err != nil {
