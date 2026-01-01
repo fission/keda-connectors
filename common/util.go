@@ -136,29 +136,9 @@ func GetAwsConfig(ctx context.Context) (aws.Config, error) {
 	if os.Getenv("AWS_ENDPOINT") != "" {
 		options = append(options, config.WithBaseEndpoint(os.Getenv("AWS_ENDPOINT")))
 	}
-	return config.LoadDefaultConfig(context.TODO(), options...)
+	return config.LoadDefaultConfig(ctx, options...)
 
 }
-
-// func CreateValidatedSession(config *aws.Config) (*session.Session, error) {
-// 	sess, err := session.NewSession(config)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to create AWS session: %w", err)
-// 	}
-
-// 	// Skip credentials validation if explicitly requested
-// 	skipValidation := strings.EqualFold(os.Getenv("AWS_SKIP_CREDENTIALS_VALIDATION"), "true")
-// 	if skipValidation {
-// 		return sess, nil
-// 	}
-
-// 	_, err = sess.Config.Credentials.Get()
-// 	if err != nil {
-// 		return nil, fmt.Errorf("invalid AWS credentials: %w", err)
-// 	}
-
-// 	return sess, nil
-// }
 
 func NewFunctionErrorDetails(message, httpEndpoint string, headers http.Header) FunctionErrorDetails {
 	return FunctionErrorDetails{
