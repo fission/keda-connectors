@@ -35,7 +35,7 @@ func parseURL(baseURL *url.URL, queueName string) (string, error) {
 	return consQueueURL.String(), nil
 }
 
-func (conn awsSQSConnector) consumeMessage() {
+func (conn awsSQSConnector) consumeMessage(ctx context.Context) {
 	var maxNumberOfMessages = int32(10) // Process maximum 10 messages concurrently
 	var waitTimeSeconds = int32(5)      // Wait 5 sec to process another message
 	var respQueueURL, errorQueueURL string
@@ -69,7 +69,7 @@ func (conn awsSQSConnector) consumeMessage() {
 	conn.logger.Info("starting to consume messages from queue", zap.String("queue", consQueueURL), zap.String("response queue", respQueueURL), zap.String("error queue", errorQueueURL))
 
 	for {
-		output, err := conn.sqsClient.ReceiveMessage(context.TODO(), &sqs.ReceiveMessageInput{
+		output, err := conn.sqsClient.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
 			QueueUrl:            &consQueueURL,
 			MaxNumberOfMessages: maxNumberOfMessages,
 			WaitTimeSeconds:     waitTimeSeconds,
@@ -77,6 +77,7 @@ func (conn awsSQSConnector) consumeMessage() {
 
 		if err != nil {
 			conn.logger.Error("failed to fetch sqs message", zap.Error(err))
+			continue
 		}
 
 		for _, message := range output.Messages {
@@ -87,11 +88,11 @@ func (conn awsSQSConnector) consumeMessage() {
 
 			resp, err := common.HandleHTTPRequest(*message.Body, headers, conn.connectordata, conn.logger)
 			if err != nil {
-				conn.errorHandler(errorQueueURL, err)
+				conn.errorHandler(ctx, errorQueueURL, err)
 			} else {
 				body, err := io.ReadAll(resp.Body)
 				if err != nil {
-					conn.errorHandler(errorQueueURL, err)
+					conn.errorHandler(ctx, errorQueueURL, err)
 				} else {
 					// Generating SQS Message attribute
 					var sqsMessageAttValue = make(map[string]types.MessageAttributeValue)
@@ -103,8 +104,8 @@ func (conn awsSQSConnector) consumeMessage() {
 							}
 						}
 					}
-					if success := conn.responseHandler(respQueueURL, string(body), sqsMessageAttValue); success {
-						conn.deleteMessage(*message.ReceiptHandle, consQueueURL)
+					if success := conn.responseHandler(ctx, respQueueURL, string(body), sqsMessageAttValue); success {
+						conn.deleteMessage(ctx, *message.ReceiptHandle, consQueueURL)
 					}
 				}
 				err = resp.Body.Close()
@@ -116,9 +117,9 @@ func (conn awsSQSConnector) consumeMessage() {
 	}
 }
 
-func (conn awsSQSConnector) responseHandler(queueURL string, response string, messageAttValue map[string]types.MessageAttributeValue) bool {
+func (conn awsSQSConnector) responseHandler(ctx context.Context, queueURL string, response string, messageAttValue map[string]types.MessageAttributeValue) bool {
 	if queueURL != "" {
-		_, err := conn.sqsClient.SendMessage(context.TODO(), &sqs.SendMessageInput{
+		_, err := conn.sqsClient.SendMessage(ctx, &sqs.SendMessageInput{
 			DelaySeconds:      int32(10),
 			MessageAttributes: messageAttValue,
 			MessageBody:       &response,
@@ -139,10 +140,10 @@ func (conn awsSQSConnector) responseHandler(queueURL string, response string, me
 	return true
 }
 
-func (conn *awsSQSConnector) errorHandler(queueURL string, err error) {
+func (conn *awsSQSConnector) errorHandler(ctx context.Context, queueURL string, err error) {
 	if queueURL != "" {
 		errMsg := err.Error()
-		_, err := conn.sqsClient.SendMessage(context.TODO(), &sqs.SendMessageInput{
+		_, err := conn.sqsClient.SendMessage(ctx, &sqs.SendMessageInput{
 			DelaySeconds: int32(10),
 			//MessageAttributes: messageAttValue,
 			MessageBody: &errMsg,
@@ -164,8 +165,8 @@ func (conn *awsSQSConnector) errorHandler(queueURL string, err error) {
 	}
 }
 
-func (conn *awsSQSConnector) deleteMessage(id string, queueURL string) {
-	_, err := conn.sqsClient.DeleteMessage(context.TODO(), &sqs.DeleteMessageInput{
+func (conn *awsSQSConnector) deleteMessage(ctx context.Context, id string, queueURL string) {
+	_, err := conn.sqsClient.DeleteMessage(ctx, &sqs.DeleteMessageInput{
 		QueueUrl:      &queueURL,
 		ReceiptHandle: &id,
 	})
@@ -187,11 +188,13 @@ func main() {
 		_ = logger.Sync()
 	}()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	connectordata, err := common.ParseConnectorMetadata()
 	if err != nil {
 		logger.Fatal("failed to parse connector metadata", zap.Error(err))
 	}
-	config, err := common.GetAwsConfig(context.TODO())
+	config, err := common.GetAwsConfig(ctx)
 	if err != nil {
 		logger.Error("failed to fetch aws config", zap.Error(err))
 		return
@@ -210,5 +213,5 @@ func main() {
 		connectordata: connectordata,
 		logger:        logger,
 	}
-	conn.consumeMessage()
+	conn.consumeMessage(ctx)
 }

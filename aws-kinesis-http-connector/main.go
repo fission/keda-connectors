@@ -35,9 +35,9 @@ type awsKinesisConnector struct {
 }
 
 // listShards get called every 30sec to get all the shards
-func (conn *awsKinesisConnector) listShards() ([]types.Shard, error) {
+func (conn *awsKinesisConnector) listShards(ctx context.Context) ([]types.Shard, error) {
 	// call DescribeStream to get updated shards
-	stream, err := conn.client.DescribeStream(context.TODO(), &kinesis.DescribeStreamInput{
+	stream, err := conn.client.DescribeStream(ctx, &kinesis.DescribeStreamInput{
 		StreamName: &conn.connectordata.Topic,
 	})
 	if err != nil {
@@ -57,7 +57,7 @@ func (conn *awsKinesisConnector) findNewShards() {
 			return
 		case <-ticker.C:
 			// check if new shards are available in every 30 seconds
-			shardList, err := conn.listShards()
+			shardList, err := conn.listShards(conn.ctx)
 			if err != nil {
 				return
 			}
@@ -100,9 +100,9 @@ func (conn *awsKinesisConnector) getIterator(shardID string, checkpoint string) 
 }
 
 // getRecords get the data for the specific shard
-func (conn *awsKinesisConnector) getRecords(shardIterator *string) (*kinesis.GetRecordsOutput, error) {
+func (conn *awsKinesisConnector) getRecords(ctx context.Context, shardIterator *string) (*kinesis.GetRecordsOutput, error) {
 	// get records use shard iterator for making request
-	records, err := conn.client.GetRecords(context.TODO(), &kinesis.GetRecordsInput{
+	records, err := conn.client.GetRecords(ctx, &kinesis.GetRecordsInput{
 		ShardIterator: shardIterator,
 		Limit:         &conn.maxRecords,
 	})
@@ -149,7 +149,7 @@ func (conn *awsKinesisConnector) pullRecords(fn pullFunc) {
 				}
 				iterator := iteratorOutput.ShardIterator
 				if iterator != nil {
-					resp, err := conn.getRecords(iterator)
+					resp, err := conn.getRecords(conn.ctx, iterator)
 					if err != nil {
 						conn.logger.Error("error in getting records",
 							zap.String("shardID", shardID),
@@ -202,7 +202,7 @@ func (conn *awsKinesisConnector) consumeMessage(r *record) {
 		conn.logger.Error("error processing message",
 			zap.String("shardID", r.shardID),
 			zap.Error(err))
-		conn.errorHandler(r, err.Error())
+		conn.errorHandler(conn.ctx, r, err.Error())
 	} else {
 		defer resp.Body.Close()
 		body, err := io.ReadAll(resp.Body)
@@ -210,9 +210,9 @@ func (conn *awsKinesisConnector) consumeMessage(r *record) {
 			conn.logger.Error("error processing message",
 				zap.String("shardID", r.shardID),
 				zap.Error(err))
-			conn.errorHandler(r, err.Error())
+			conn.errorHandler(conn.ctx, r, err.Error())
 		} else {
-			if err := conn.responseHandler(r, string(body)); err != nil {
+			if err := conn.responseHandler(conn.ctx, r, string(body)); err != nil {
 				conn.logger.Error("failed to publish response body from http request to topic",
 					zap.Error(err),
 					zap.String("topic", conn.connectordata.ResponseTopic),
@@ -226,7 +226,7 @@ func (conn *awsKinesisConnector) consumeMessage(r *record) {
 	}
 }
 
-func (conn *awsKinesisConnector) responseHandler(r *record, response string) error {
+func (conn *awsKinesisConnector) responseHandler(ctx context.Context, r *record, response string) error {
 	if len(conn.connectordata.ResponseTopic) > 0 {
 		params := &kinesis.PutRecordInput{
 			Data:                      []byte(response),                             // Required
@@ -234,7 +234,7 @@ func (conn *awsKinesisConnector) responseHandler(r *record, response string) err
 			StreamName:                aws.String(conn.connectordata.ResponseTopic), // Required
 			SequenceNumberForOrdering: aws.String(*r.SequenceNumber),
 		}
-		_, err := conn.client.PutRecord(context.TODO(), params)
+		_, err := conn.client.PutRecord(ctx, params)
 		if err != nil {
 			return err
 		}
@@ -242,7 +242,7 @@ func (conn *awsKinesisConnector) responseHandler(r *record, response string) err
 	return nil
 }
 
-func (conn *awsKinesisConnector) errorHandler(r *record, errMsg string) {
+func (conn *awsKinesisConnector) errorHandler(ctx context.Context, r *record, errMsg string) {
 	if len(conn.connectordata.ErrorTopic) > 0 {
 		params := &kinesis.PutRecordInput{
 			Data:                      []byte(errMsg),                            // Required
@@ -251,7 +251,7 @@ func (conn *awsKinesisConnector) errorHandler(r *record, errMsg string) {
 			SequenceNumberForOrdering: aws.String(*r.SequenceNumber),
 		}
 
-		_, err := conn.client.PutRecord(context.TODO(), params)
+		_, err := conn.client.PutRecord(ctx, params)
 		if err != nil {
 			conn.logger.Error("failed to publish message to error topic",
 				zap.Error(err),
@@ -293,7 +293,7 @@ func main() {
 		return
 	}
 	waiter := kinesis.NewStreamExistsWaiter(kc)
-	if err := waiter.Wait(context.TODO(), &kinesis.DescribeStreamInput{StreamName: &connectordata.Topic}, 5*time.Minute); err != nil {
+	if err := waiter.Wait(ctx, &kinesis.DescribeStreamInput{StreamName: &connectordata.Topic}, 5*time.Minute); err != nil {
 		logger.Error("not able to connect to kinesis stream", zap.Error(err))
 		return
 	}

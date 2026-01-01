@@ -19,8 +19,10 @@ func main() {
 	if queueURL == "" {
 		log.Fatal("AWS_SQS_URL is not set")
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	config, err := common.GetAwsConfig(context.TODO())
+	config, err := common.GetAwsConfig(ctx)
 	if err != nil {
 		log.Fatal("Error while getting AWS config", err)
 	}
@@ -29,7 +31,7 @@ func main() {
 	msg := "Hello Msg"
 	url := queueURL + "/my_queue"
 	log.Println("Sending message to queue", url)
-	_, err = svc.SendMessage(context.TODO(), &sqs.SendMessageInput{
+	_, err = svc.SendMessage(ctx, &sqs.SendMessageInput{
 		DelaySeconds: *aws.Int32(10),
 		MessageBody:  &msg,
 		QueueUrl:     &url,
@@ -42,7 +44,7 @@ func main() {
 	log.Println("Receiving message from queue", urlRep)
 	var maxNumberOfMessages = int32(1)
 	var waitTimeSeconds = int32(5)
-	output, err := svc.ReceiveMessage(context.TODO(), &sqs.ReceiveMessageInput{
+	output, err := svc.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
 		MaxNumberOfMessages: maxNumberOfMessages,
 		WaitTimeSeconds:     waitTimeSeconds,
 		QueueUrl:            &urlRep,
