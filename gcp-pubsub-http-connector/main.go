@@ -38,11 +38,13 @@ func main() {
 	defer func() {
 		_ = logger.Sync()
 	}()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	connectordata, err := common.ParseConnectorMetadata()
 	if err != nil {
 		logger.Error("Environment variable is missing ", zap.Error(err))
-		os.Exit(127)
+		return
 	}
 
 	pubsubInfo, err := GetGCPInfo()
@@ -57,13 +59,14 @@ func main() {
 	}
 
 	logger.Info("Conn: %s", zap.String("Response topic", conn.connectordata.ResponseTopic))
-	err = conn.consumeMessage()
+	err = conn.consumeMessage(ctx)
 	if err != nil {
 		logger.Error("Error in consuming message from pubsub", zap.Error(err))
+		return
 	}
 }
 
-func (conn pubsubConnector) consumeMessage() error {
+func (conn pubsubConnector) consumeMessage(ctx context.Context) error {
 	creds := []byte(conn.pubsubInfo.Creds)
 	headers := http.Header{
 		"KEDA-Topic":          {conn.connectordata.Topic},
@@ -72,8 +75,7 @@ func (conn pubsubConnector) consumeMessage() error {
 		"Content-Type":        {conn.connectordata.ContentType},
 		"KEDA-Source-Name":    {conn.connectordata.SourceName},
 	}
-	ctx := context.Background()
-	client, err := pubsub.NewClient(ctx, conn.pubsubInfo.ProjectID, option.WithCredentialsJSON(creds))
+	client, err := pubsub.NewClient(ctx, conn.pubsubInfo.ProjectID, option.WithAuthCredentialsJSON(option.ServiceAccount, creds))
 	if err != nil {
 		conn.logger.Error(err.Error())
 		return err
@@ -95,7 +97,7 @@ func (conn pubsubConnector) consumeMessage() error {
 		resp, err := common.HandleHTTPRequest(string(msg.Data), headers, conn.connectordata, conn.logger)
 		if err != nil {
 			if conn.connectordata.ErrorTopic != "" {
-				conn.responseOrErrorHandler(conn.connectordata.ErrorTopic, err.Error(), headers)
+				conn.responseOrErrorHandler(ctx, conn.connectordata.ErrorTopic, err.Error(), headers)
 			}
 			conn.logger.Error("Error sending the message to the endpoint %v", zap.Error(err))
 		} else {
@@ -103,14 +105,14 @@ func (conn pubsubConnector) consumeMessage() error {
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				if conn.connectordata.ErrorTopic != "" {
-					conn.responseOrErrorHandler(conn.connectordata.ErrorTopic, string(body), headers)
+					conn.responseOrErrorHandler(ctx, conn.connectordata.ErrorTopic, string(body), headers)
 				}
 				conn.logger.Error("Error reading body", zap.Error(err))
 
 			} else {
 				msg.Ack()
 				if conn.connectordata.ResponseTopic != "" {
-					conn.responseOrErrorHandler(conn.connectordata.ResponseTopic, string(body), headers)
+					conn.responseOrErrorHandler(ctx, conn.connectordata.ResponseTopic, string(body), headers)
 				}
 				conn.logger.Info("Success in sending the message", zap.Any("Messsage sent:  ", msg))
 			}
@@ -123,10 +125,8 @@ func (conn pubsubConnector) consumeMessage() error {
 	return nil
 }
 
-func (conn pubsubConnector) responseOrErrorHandler(topicID string, response string, headers http.Header) {
-
-	ctx := context.Background()
-	client, err := pubsub.NewClient(ctx, conn.pubsubInfo.ProjectID, option.WithCredentialsJSON([]byte(conn.pubsubInfo.Creds)))
+func (conn pubsubConnector) responseOrErrorHandler(ctx context.Context, topicID string, response string, headers http.Header) {
+	client, err := pubsub.NewClient(ctx, conn.pubsubInfo.ProjectID, option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(conn.pubsubInfo.Creds)))
 	if err != nil {
 		conn.logger.Error("pubsub.NewClient: %v", zap.Error(err))
 	}
