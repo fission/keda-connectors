@@ -1,14 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
+
+	"github.com/fission/keda-connectors/common"
 )
 
 // comment
@@ -17,30 +19,20 @@ func main() {
 	if queueURL == "" {
 		log.Fatal("AWS_SQS_URL is not set")
 	}
-	region := os.Getenv("AWS_REGION")
-	if region == "" {
-		log.Fatal("AWS_REGION is not set")
-	}
-	endpoint := os.Getenv("AWS_ENDPOINT")
-	if endpoint == "" {
-		log.Fatal("AWS_ENDPOINT is not set")
-	}
-	config := &aws.Config{
-		Region:   &region,
-		Endpoint: &endpoint,
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	sess, err := session.NewSession(config)
+	config, err := common.GetAwsConfig(ctx)
 	if err != nil {
-		log.Fatal("Error while creating session", err)
+		log.Fatal("Error while getting AWS config", err)
 	}
-	svc := sqs.New(sess)
+	svc := sqs.NewFromConfig(config)
 
 	msg := "Hello Msg"
 	url := queueURL + "/my_queue"
 	log.Println("Sending message to queue", url)
-	_, err = svc.SendMessage(&sqs.SendMessageInput{
-		DelaySeconds: aws.Int64(10),
+	_, err = svc.SendMessage(ctx, &sqs.SendMessageInput{
+		DelaySeconds: *aws.Int32(10),
 		MessageBody:  &msg,
 		QueueUrl:     &url,
 	})
@@ -50,11 +42,11 @@ func main() {
 	time.Sleep(5 * time.Second)
 	urlRep := queueURL + "/responseTopic"
 	log.Println("Receiving message from queue", urlRep)
-	var maxNumberOfMessages = int64(1)
-	var waitTimeSeconds = int64(5)
-	output, err := svc.ReceiveMessage(&sqs.ReceiveMessageInput{
-		MaxNumberOfMessages: &maxNumberOfMessages,
-		WaitTimeSeconds:     &waitTimeSeconds,
+	var maxNumberOfMessages = int32(1)
+	var waitTimeSeconds = int32(5)
+	output, err := svc.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
+		MaxNumberOfMessages: maxNumberOfMessages,
+		WaitTimeSeconds:     waitTimeSeconds,
 		QueueUrl:            &urlRep,
 	})
 	if err != nil {

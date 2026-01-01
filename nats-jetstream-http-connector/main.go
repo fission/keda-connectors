@@ -50,7 +50,7 @@ func main() {
 	}
 
 	defer func() {
-		logger.Sync()
+		_ = logger.Sync()
 	}()
 
 	connectordata, err := common.ParseConnectorMetadata()

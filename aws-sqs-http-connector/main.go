@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"io"
 	"log"
 	"net/url"
@@ -11,15 +12,16 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 
 	"github.com/fission/keda-connectors/common"
 )
 
 type awsSQSConnector struct {
 	sqsURL        *url.URL
-	sqsClient     *sqs.SQS
+	sqsClient     *sqs.Client
 	connectordata common.ConnectorMetadata
 	logger        *zap.Logger
 }
@@ -33,9 +35,9 @@ func parseURL(baseURL *url.URL, queueName string) (string, error) {
 	return consQueueURL.String(), nil
 }
 
-func (conn awsSQSConnector) consumeMessage() {
-	var maxNumberOfMessages = int64(10) // Process maximum 10 messages concurrently
-	var waitTimeSeconds = int64(5)      // Wait 5 sec to process another message
+func (conn awsSQSConnector) consumeMessage(ctx context.Context) {
+	var maxNumberOfMessages = int32(10) // Process maximum 10 messages concurrently
+	var waitTimeSeconds = int32(5)      // Wait 5 sec to process another message
 	var respQueueURL, errorQueueURL string
 	headers := http.Header{
 		"KEDA-Topic":          {conn.connectordata.Topic},
@@ -67,42 +69,43 @@ func (conn awsSQSConnector) consumeMessage() {
 	conn.logger.Info("starting to consume messages from queue", zap.String("queue", consQueueURL), zap.String("response queue", respQueueURL), zap.String("error queue", errorQueueURL))
 
 	for {
-		output, err := conn.sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
+		output, err := conn.sqsClient.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
 			QueueUrl:            &consQueueURL,
-			MaxNumberOfMessages: &maxNumberOfMessages,
-			WaitTimeSeconds:     &waitTimeSeconds,
+			MaxNumberOfMessages: maxNumberOfMessages,
+			WaitTimeSeconds:     waitTimeSeconds,
 		})
 
 		if err != nil {
 			conn.logger.Error("failed to fetch sqs message", zap.Error(err))
+			continue
 		}
 
 		for _, message := range output.Messages {
 			// Set the attributes as message header came from SQS record
 			for k, v := range message.Attributes {
-				headers.Add(k, *v)
+				headers.Add(k, v)
 			}
 
 			resp, err := common.HandleHTTPRequest(*message.Body, headers, conn.connectordata, conn.logger)
 			if err != nil {
-				conn.errorHandler(errorQueueURL, err)
+				conn.errorHandler(ctx, errorQueueURL, err)
 			} else {
 				body, err := io.ReadAll(resp.Body)
 				if err != nil {
-					conn.errorHandler(errorQueueURL, err)
+					conn.errorHandler(ctx, errorQueueURL, err)
 				} else {
 					// Generating SQS Message attribute
-					var sqsMessageAttValue = make(map[string]*sqs.MessageAttributeValue)
+					var sqsMessageAttValue = make(map[string]types.MessageAttributeValue)
 					for k, v := range resp.Header {
 						for _, d := range v {
-							sqsMessageAttValue[k] = &sqs.MessageAttributeValue{
+							sqsMessageAttValue[k] = types.MessageAttributeValue{
 								DataType:    aws.String("String"),
 								StringValue: aws.String(d),
 							}
 						}
 					}
-					if success := conn.responseHandler(respQueueURL, string(body), sqsMessageAttValue); success {
-						conn.deleteMessage(*message.ReceiptHandle, consQueueURL)
+					if success := conn.responseHandler(ctx, respQueueURL, string(body), sqsMessageAttValue); success {
+						conn.deleteMessage(ctx, *message.ReceiptHandle, consQueueURL)
 					}
 				}
 				err = resp.Body.Close()
@@ -114,10 +117,10 @@ func (conn awsSQSConnector) consumeMessage() {
 	}
 }
 
-func (conn awsSQSConnector) responseHandler(queueURL string, response string, messageAttValue map[string]*sqs.MessageAttributeValue) bool {
+func (conn awsSQSConnector) responseHandler(ctx context.Context, queueURL string, response string, messageAttValue map[string]types.MessageAttributeValue) bool {
 	if queueURL != "" {
-		_, err := conn.sqsClient.SendMessage(&sqs.SendMessageInput{
-			DelaySeconds:      aws.Int64(10),
+		_, err := conn.sqsClient.SendMessage(ctx, &sqs.SendMessageInput{
+			DelaySeconds:      int32(10),
 			MessageAttributes: messageAttValue,
 			MessageBody:       &response,
 			QueueUrl:          &queueURL,
@@ -137,11 +140,11 @@ func (conn awsSQSConnector) responseHandler(queueURL string, response string, me
 	return true
 }
 
-func (conn *awsSQSConnector) errorHandler(queueURL string, err error) {
+func (conn *awsSQSConnector) errorHandler(ctx context.Context, queueURL string, err error) {
 	if queueURL != "" {
 		errMsg := err.Error()
-		_, err := conn.sqsClient.SendMessage(&sqs.SendMessageInput{
-			DelaySeconds: aws.Int64(10),
+		_, err := conn.sqsClient.SendMessage(ctx, &sqs.SendMessageInput{
+			DelaySeconds: int32(10),
 			//MessageAttributes: messageAttValue,
 			MessageBody: &errMsg,
 			QueueUrl:    &queueURL,
@@ -162,8 +165,8 @@ func (conn *awsSQSConnector) errorHandler(queueURL string, err error) {
 	}
 }
 
-func (conn *awsSQSConnector) deleteMessage(id string, queueURL string) {
-	_, err := conn.sqsClient.DeleteMessage(&sqs.DeleteMessageInput{
+func (conn *awsSQSConnector) deleteMessage(ctx context.Context, id string, queueURL string) {
+	_, err := conn.sqsClient.DeleteMessage(ctx, &sqs.DeleteMessageInput{
 		QueueUrl:      &queueURL,
 		ReceiptHandle: &id,
 	})
@@ -181,24 +184,22 @@ func main() {
 	if err != nil {
 		log.Fatalf("can't initialize zap logger: %v", err)
 	}
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	connectordata, err := common.ParseConnectorMetadata()
 	if err != nil {
 		logger.Fatal("failed to parse connector metadata", zap.Error(err))
 	}
-	config, err := common.GetAwsConfig()
+	config, err := common.GetAwsConfig(ctx)
 	if err != nil {
 		logger.Error("failed to fetch aws config", zap.Error(err))
 		return
 	}
-
-	sess, err := common.CreateValidatedSession(config)
-	if err != nil {
-		logger.Error("not able create session using aws configuration", zap.Error(err))
-		return
-	}
-	svc := sqs.New(sess)
+	svc := sqs.NewFromConfig(config)
 
 	sqsURL, err := url.Parse(strings.TrimSuffix(os.Getenv("QUEUE_URL"), os.Getenv("TOPIC")))
 	if err != nil {
@@ -212,5 +213,5 @@ func main() {
 		connectordata: connectordata,
 		logger:        logger,
 	}
-	conn.consumeMessage()
+	conn.consumeMessage(ctx)
 }

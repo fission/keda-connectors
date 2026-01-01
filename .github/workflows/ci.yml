@@ -147,6 +147,8 @@ jobs:
           helm repo add localstack-charts https://localstack.github.io/helm-charts
           helm repo update
           helm install localstack localstack-charts/localstack
+          # Wait for localstack pod to be ready
+          kubectl wait pod -l=app.kubernetes.io/name=localstack --for=condition=ready
 
       - name: Deploy SQS Keda Connector, Keda ScaledObject and SQS test queue
         run: |

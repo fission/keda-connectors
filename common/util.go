@@ -1,7 +1,9 @@
 package common
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,9 +11,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/pkg/errors"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"go.uber.org/zap"
 )
 
@@ -79,7 +80,7 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 		// Create request
 		req, err := http.NewRequest("POST", data.HTTPEndpoint, strings.NewReader(message))
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to create HTTP request to invoke function. http_endpoint: %v, source: %v", data.HTTPEndpoint, data.SourceName)
+			return nil, fmt.Errorf("failed to create HTTP request to invoke function. http_endpoint: %s, source: %s: %w", data.HTTPEndpoint, data.SourceName, err)
 		}
 
 		// Add headers
@@ -101,7 +102,7 @@ func HandleHTTPRequest(message string, headers http.Header, data ConnectorMetada
 		if resp == nil {
 			continue
 		}
-		if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			// Success, quit retrying
 			return resp, nil
 		}
@@ -127,41 +128,16 @@ The order configuration is loaded in is:
 - EC2 Instance Metadata (credentials only)
 GetAwsConfig allows override of aws region & endpoint
 */
-func GetAwsConfig() (*aws.Config, error) {
-	config := &aws.Config{}
-
-	if os.Getenv("AWS_REGION") == "" {
-		return nil, errors.New("aws region required")
+func GetAwsConfig(ctx context.Context) (aws.Config, error) {
+	options := []func(*config.LoadOptions) error{}
+	if os.Getenv("AWS_REGION") != "" {
+		options = append(options, config.WithRegion(os.Getenv("AWS_REGION")))
 	}
-
-	config.Region = aws.String(os.Getenv("AWS_REGION"))
-
 	if os.Getenv("AWS_ENDPOINT") != "" {
-		endpoint := os.Getenv("AWS_ENDPOINT")
-		config.Endpoint = &endpoint
+		options = append(options, config.WithBaseEndpoint(os.Getenv("AWS_ENDPOINT")))
 	}
+	return config.LoadDefaultConfig(ctx, options...)
 
-	return config, nil
-}
-
-func CreateValidatedSession(config *aws.Config) (*session.Session, error) {
-	sess, err := session.NewSession(config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create AWS session: %w", err)
-	}
-
-	// Skip credentials validation if explicitly requested
-	skipValidation := strings.EqualFold(os.Getenv("AWS_SKIP_CREDENTIALS_VALIDATION"), "true")
-	if skipValidation {
-		return sess, nil
-	}
-
-	_, err = sess.Config.Credentials.Get()
-	if err != nil {
-		return nil, fmt.Errorf("invalid AWS credentials: %w", err)
-	}
-
-	return sess, nil
 }
 
 func NewFunctionErrorDetails(message, httpEndpoint string, headers http.Header) FunctionErrorDetails {

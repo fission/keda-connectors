@@ -10,10 +10,6 @@ linters:
     - prealloc
     - unconvert
     - unparam
-  settings:
-    errcheck:
-      exclude-functions:
-        - (*go.uber.org/zap.Logger).Sync
   exclusions:
     generated: lax
     presets:
